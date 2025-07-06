@@ -1,15 +1,15 @@
 import numpy as np
 from scipy.stats import norm
 
-def black_scholes_price(S, K, T, sigma, r, option_type = "Call"):
+def black_scholes_price(S, K, T, r, sigma, option_type = "Call"):
 
     # Parameters:
 
     # S - price of underlying asset (for example - stocks)
     # K - strike price of the option
     # T - time until maturity in years (with the assumption of an european option)
-    # sigma - volatility of the underlying asset
     # r - non-risk interest rate (used for discounting from T to t_0)
+    # sigma - volatility of the underlying asset
 
     d1 = (np.log(S / K) + (r + sigma**2 * 0.5) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
