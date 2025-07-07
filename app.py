@@ -31,4 +31,5 @@ with tab2:
         st.subheader("Option Price")
         price = black_scholes_price(S, K, T, r, sigma, option_type)
         st.success(f"{option_type} option price: {price:.2f}€")
-        st.plotly_chart(create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, price, option_type))
+        color_toggle = st.toggle("Toggle coloring of areas", value=False)
+        st.plotly_chart(create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, price, option_type, color_toggle))

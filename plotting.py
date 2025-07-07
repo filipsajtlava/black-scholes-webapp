@@ -26,6 +26,7 @@ def create_axes(figure):
     )
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
+    
     # Annotation points added to the graph, mainly the important points like "C", "K", and the profit differential "K+C"
 
     if option_type == "Call":
@@ -60,7 +61,140 @@ def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
 
     return annotations
 
-def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, modelled_price, option_type):    
+def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high_value):
+
+    # Adds a colored representation of the option payoff
+
+    # The arbitrary_high_value scales the areas to appear infinite-like - mainly because of the infinite possible
+    # profits of the call option
+
+    colors = ["#E03C32", "#FFD301", "#7BB662"]
+
+    if option_type == "Call":
+        fig.add_shape(
+            type="rect",
+            x0=0,
+            x1=K,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[0],
+            opacity=0.075,
+            layer="below"
+        )
+
+        fig.add_shape(
+            type="rect",
+            x0=K,
+            x1=K+modelled_price,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[1],
+            opacity=0.075,
+            layer="below"
+        )
+
+        fig.add_shape(
+            type="rect",
+            x0=K+modelled_price,
+            x1=max_x,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[2],
+            opacity=0.075,
+            layer="below"
+        )
+    else:
+        fig.add_shape(
+            type="rect",
+            x0=0,
+            x1=K-modelled_price,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[2],
+            opacity=0.075,
+            layer="below"
+        )
+
+        fig.add_shape(
+            type="rect",
+            x0=K-modelled_price,
+            x1=K,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[1],
+            opacity=0.075,
+            layer="below"
+        )
+
+        fig.add_shape(
+            type="rect",
+            x0=K,
+            x1=max_x,
+            y0=-arbitrary_high_value,
+            y1=arbitrary_high_value,
+            fillcolor=colors[0],
+            opacity=0.075,
+            layer="below"
+        )
+
+def dashed_lines(K, modelled_price, option_type, fig, arbitrary_high_value):
+
+    # Just like in the previous example, we want a high value to simulate the lines going to infinity
+
+    # Dashed lines placement [x, y] (different for Call and Put options)
+    dashed_lines = [
+        [K, arbitrary_high_value],
+        [K + (modelled_price if option_type == "Call" else -modelled_price), arbitrary_high_value]
+    ]
+
+    # Dashed lines graphing
+    for x, y in dashed_lines:     
+        fig.add_shape(
+            type="line",
+            x0=x,
+            x1=x,
+            y0=-y,
+            y1=y,
+            line=dict(color="white", width=1, dash="dash")
+        )
+
+    # Horizontal dashed line to connect the "-P" to the actual part of the function
+    if option_type == "Put":
+        fig.add_shape(
+            type="line",
+            x0=0,
+            x1=K,
+            y0=-modelled_price,
+            y1=-modelled_price,
+            line=dict(color="white", width=1, dash="dash"),
+            opacity=0.1
+        )
+
+def hover_tooltips(K, modelled_price, option_type, fig, annotations):
+
+    x_hover = []
+    y_hover = []
+
+    for i in range(0, len(annotations)):
+        x_hover.append(annotations[i][0])
+        y_hover.append(annotations[i][1])
+
+    fig.add_trace(go.Scatter(
+        x=x_hover,
+        y=y_hover,
+        mode="markers",
+        marker=dict(size=10, color="rgba(0,0,0,0)"),  # invisible
+        hoverinfo="text",
+        hovertext=[
+            f"Option price: {modelled_price:.2f}€",
+            f"Strike price: {K:.2f}€",
+            f"Break-even: {K + modelled_price:.2f}€" if option_type == "Call"
+            else f"Break-even: {K - modelled_price:.2f}€"
+        ],
+        showlegend=False
+    ))
+
+def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, modelled_price, option_type, coloring = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)
@@ -79,44 +213,13 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
     fig.add_trace(go.Scatter(
         x = x_prices,
         y = y_profit,
-        mode = "lines"
+        mode = "lines",
+        hoverinfo="skip",
+        showlegend=False
     ))
 
     # Adding the main axes to the figure
-    create_axes(fig)    
-
-    # Dashed lines placement [x, y] (different for Call and Put options)
-    dashed_lines = [
-        [K, max(x_prices)],
-        [K + (modelled_price if option_type == "Call" else -modelled_price), max(x_prices)]
-    ]
-
-    # Dashed lines graphing
-    for x, y in dashed_lines:     
-        fig.add_shape(
-            type="line",
-            x0=x,
-            x1=x,
-            y0=-y,
-            y1=y,
-            line=dict(color="white", width=1, dash="dash"),
-            xref="x",
-            yref="y"
-        )
-
-    # Horizontal dashed line to connect the "-P" to the actual part of the function
-    if option_type == "Put":
-        fig.add_shape(
-            type="line",
-            x0=0,
-            x1=K,
-            y0=-modelled_price,
-            y1=-modelled_price,
-            line=dict(color="white", width=1, dash="dash"),
-            xref="x",
-            yref="y",
-            opacity=0.1
-        )
+    create_axes(fig)
 
     # Names of axes and the size of the graph
     fig.update_layout(
@@ -124,6 +227,10 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
         yaxis_title = "Payoff (in €)",
         height = 500,
     )
+
+    # Dashed lines to represent the intercepts of the function with the axes
+
+    dashed_lines(K, modelled_price, option_type, fig, max(x_prices))
 
     # The final graph will be "zoomed" on the important parts based on their size and location
     
@@ -148,6 +255,11 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
             showarrow = False,
             font = dict(size = 14)
         )
+
+    hover_tooltips(K, modelled_price, option_type, fig, annotations)
+
+    if coloring:
+        profit_loss_areas(K, modelled_price, option_type, fig, max(x_prices), max(x_prices))
 
     # x and y axes are adjusted accordingly to the size and shape of the graph
     fig.update_xaxes(range = x_axis_output_visual)
