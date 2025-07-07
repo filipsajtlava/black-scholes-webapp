@@ -25,20 +25,55 @@ def create_axes(figure):
         line = dict(color = "white", width = 1)
     )
 
+def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
+    # Annotation points added to the graph, mainly the important points like "C", "K", and the profit differential "K+C"
+
+    if option_type == "Call":
+        annotations = [
+            [-rel_x_pos, -modelled_price, "-C"],
+            [K - rel_x_pos, rel_y_pos, "K"],
+            [K + modelled_price - rel_x_pos * 1.5, rel_y_pos, "K + C"]
+        ] # As the "K + C" is inherently larger than a single letter, we have to align them more agressively (reason for * 1.5)
+
+        # If "K" dashed line is relatively close to the start x = 0, then move the letter "K" to the right,
+        # so it doesn't touch the y-axis
+        if K < rel_x_pos * 2:
+            annotations[1][0] = K + rel_x_pos
+
+        # If "K" is relatively close to "K + C", the annotation 'jumps' to the other side, so that they don't
+        # intersect with eachother 
+        if (K + modelled_price - K) < rel_x_pos * 3:
+            annotations[2][0] = K + modelled_price + rel_x_pos * 1.5
+
+    # Put option 
+    else:
+        annotations = [
+            [-rel_x_pos, -modelled_price, "-P"],
+            [K + rel_x_pos, rel_y_pos, "K"],
+            [K - modelled_price + rel_x_pos * 1.5, rel_y_pos, "K - P"]
+        ]   
+
+        # If "K" is relatively close to "K + P", the annotation 'jumps' to the other side, so that they don't
+        # intersect with eachother - this time for the put option, so it's the other way
+        if (K + modelled_price - K) < rel_x_pos * 3:
+            annotations[2][0] = K - modelled_price - rel_x_pos * 1.5
+
+    return annotations
+
 def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, modelled_price, option_type):    
 
-    x_prices = np.linspace(0, maximum_stock_value * 10, int(maximum_stock_value * 20))
-    y_profit = []
+    fixed_input_max = max(maximum_stock_value, maximum_strike_value)
+    variable_input_max = max(S, K)
 
-    rel = maximum_strike_value / 25
-    rel_input = max(S,K) / 5
+    # x-axis 10-times the original size for the infinite profit possibility for Call options with S(t) -> +inf
+    x_prices = np.linspace(
+        0, fixed_input_max * 10, int(fixed_input_max * 20)
+    )
 
     if option_type == "Call":  
-        for x in x_prices:
-            y_profit.append(max(x - K, 0) - modelled_price)
+        y_profit = np.maximum(x_prices - K, 0) - modelled_price
     else:
-        for x in x_prices:
-            y_profit.append(max(K - x, 0) - modelled_price)
+        y_profit = np.maximum(K - x_prices, 0) - modelled_price
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -47,19 +82,16 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
         mode = "lines"
     ))
 
+    # Adding the main axes to the figure
     create_axes(fig)    
 
-    # Dashed lines placement [x, y]
+    # Dashed lines placement [x, y] (different for Call and Put options)
     dashed_lines = [
         [K, max(x_prices)],
         [K + (modelled_price if option_type == "Call" else -modelled_price), max(x_prices)]
     ]
 
-    # Put options are defined differently
-    if option_type == "Put":
-        dashed_lines[1][0] = K - modelled_price
-
-    # Dashed lines
+    # Dashed lines graphing
     for x, y in dashed_lines:     
         fig.add_shape(
             type="line",
@@ -72,47 +104,42 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
             yref="y"
         )
 
-    # names of axes and the size of the graph
+    # Horizontal dashed line to connect the "-P" to the actual part of the function
+    if option_type == "Put":
+        fig.add_shape(
+            type="line",
+            x0=0,
+            x1=K,
+            y0=-modelled_price,
+            y1=-modelled_price,
+            line=dict(color="white", width=1, dash="dash"),
+            xref="x",
+            yref="y",
+            opacity=0.1
+        )
+
+    # Names of axes and the size of the graph
     fig.update_layout(
         xaxis_title = "S(t)",
         yaxis_title = "Payoff (in €)",
-        width = 100,
         height = 500,
     )
 
-    # Annotation points added to the graph, mainly the important points like "C", "K", and the profit differential "K+C"
+    # The final graph will be "zoomed" on the important parts based on their size and location
+    
+    # This means that the positions of the annotations have to be changed relatively to the "zoom"
 
-    relative_y_annotations = modelled_price / 10 + rel / 10
+    x_axis_output_visual = [-(variable_input_max / 15), K + modelled_price + variable_input_max / 2.5]
+    x_visual_span = x_axis_output_visual[1] - x_axis_output_visual[0]
+    rel_x_pos = x_visual_span / 30
 
-    if option_type == "Call":
-        annotations = [
-            [-(rel_input / 4), -modelled_price, "-C"],
-            [K - rel_input / 3, relative_y_annotations, "K"],
-            [K + modelled_price - rel_input / 2, relative_y_annotations, "K + C"]
-        ]
+    y_axis_output_visual = [-modelled_price - variable_input_max / 15, modelled_price + variable_input_max / 15]
+    y_visual_span = y_axis_output_visual[1] - y_axis_output_visual[0]
+    rel_y_pos = y_visual_span / 30
 
-        # If "K" dashed line is relatively close to the start x = 0, then move the letter "K" to the right,
-        # so it doesn't touch the y-axis
-        if K < rel_input:
-            annotations[1][0] = K + rel_input / 3
+    annotations = get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos)
 
-        # If "K" is relatively close to "K + C", the annotation 'jumps' to the other side, so that they don't
-        # intersect with eachother 
-        if (K + modelled_price - K) < rel_input:
-            annotations[2][0] = K + modelled_price + rel_input / 2
-
-    else:
-        annotations = [
-            [-(rel_input / 4), -modelled_price, "-P"],
-            [K + rel_input / 3, relative_y_annotations, "K"],
-            [K - modelled_price + rel_input / 2, relative_y_annotations, "K - P"]
-        ]   
-
-        # If "K" is relatively close to "K + P", the annotation 'jumps' to the other side, so that they don't
-        # intersect with eachother 
-        if (K + modelled_price - K) < rel_input:
-            annotations[2][0] = K - modelled_price - rel_input / 2
-
+    # Here we add the annotations to the graph using the positions defined earlier
     for x, y, label in annotations:
         fig.add_annotation(
             x = x,
@@ -123,6 +150,7 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
         )
 
     # x and y axes are adjusted accordingly to the size and shape of the graph
-    fig.update_xaxes(range = [-rel_input / 2.5, K + modelled_price + rel_input * 2.5])
-    fig.update_yaxes(range = [-modelled_price-rel, modelled_price+rel])
+    fig.update_xaxes(range = x_axis_output_visual)
+    fig.update_yaxes(range = y_axis_output_visual)
+
     return(fig)

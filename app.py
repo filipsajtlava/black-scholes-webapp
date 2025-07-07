@@ -1,7 +1,5 @@
 from pricing import black_scholes_price
 import streamlit as st
-import numpy as np
-import plotly.graph_objects as go
 from plotting import create_basic_option_graph
 
 maximum_stock_value = 250.0
@@ -25,7 +23,7 @@ with tab2:
         S = st.slider("Stock price (S) in €", min_value=1.0, value=100.0, max_value=maximum_stock_value, step = 1.0)
         K = st.slider("Strike price (K) in €", min_value=1.0, value=100.0, max_value=maximum_strike_value, step=1.0)
         T = st.number_input("Time to maturity (T) in years", min_value=0.01, value=1.0, max_value=5.0, step=0.05)
-        r = st.number_input("Non-risk interest rate (r)", min_value=0.0, value=0.05, step=0.01)
+        r = st.number_input("Non-risk interest rate (r)", min_value=0.0, value=0.05, max_value= 0.30, step=0.01)
         sigma = st.number_input("Volatility (σ)", min_value=0.01, max_value=1.0, value=0.1, step=0.01)
         option_type = st.selectbox("Option Type", ["Call", "Put"])
 
