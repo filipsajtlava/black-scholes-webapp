@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 import numpy as np
+from pricing import black_scholes_price
 
 def create_axes(figure):
 
@@ -194,7 +195,8 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         showlegend=False
     ))
 
-def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, modelled_price, option_type, coloring = False):    
+def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
+                               modelled_price, option_type, T, r, sigma, color_toggle = False, bs_function_toggle = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)
@@ -236,7 +238,10 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
     
     # This means that the positions of the annotations have to be changed relatively to the "zoom"
 
-    x_axis_output_visual = [-(variable_input_max / 15), K + modelled_price + variable_input_max / 2.5]
+    if option_type == "Call":
+        x_axis_output_visual = [-(variable_input_max / 15), K + modelled_price + variable_input_max / 2.5]
+    else:
+        x_axis_output_visual = [-(variable_input_max / 15), K + variable_input_max / 2.5]
     x_visual_span = x_axis_output_visual[1] - x_axis_output_visual[0]
     rel_x_pos = x_visual_span / 30
 
@@ -258,11 +263,23 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value, m
 
     hover_tooltips(K, modelled_price, option_type, fig, annotations)
 
-    if coloring:
+    if color_toggle:
         profit_loss_areas(K, modelled_price, option_type, fig, max(x_prices), max(x_prices))
 
     # x and y axes are adjusted accordingly to the size and shape of the graph
     fig.update_xaxes(range = x_axis_output_visual)
     fig.update_yaxes(range = y_axis_output_visual)
+
+    if bs_function_toggle:
+
+        black_scholes_function = black_scholes_price(x_prices, K, T, r, sigma, option_type)
+
+        fig.add_trace(go.Scatter(
+            x = x_prices,
+            y = black_scholes_function - modelled_price,
+            mode = "lines",
+            hoverinfo="skip",
+            showlegend=False
+        ))
 
     return(fig)
