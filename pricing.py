@@ -25,9 +25,9 @@ def black_scholes_price(S, K, T, r, sigma, option_type = "Call"):
 
     return price
 
-def compute_greeks(S, K, T, r, sigma, option_type = "Call"):
+def compute_greeks(S, K, T, r, sigma, option_type = "Call", greek_returned = "All"):
 
-    S = np.array(S)
+    S, K, T, r, sigma = map(np.array, (S, K, T, r, sigma))
 
     d1 = (np.log(S / K) + (r + sigma**2 * 0.5) * T) / (sigma * np.sqrt(T))
     d2 = d1 - sigma * np.sqrt(T)
@@ -46,10 +46,15 @@ def compute_greeks(S, K, T, r, sigma, option_type = "Call"):
     gamma = norm.pdf(d1) / (S * sigma * np.sqrt(T))
     vega = S * norm.pdf(d1) * np.sqrt(T)
 
-    return {
+    greek_return_dict = {
         "Delta": delta,
         "Gamma": gamma,
         "Vega": vega / 100,
         "Theta": theta / 365,
-        "Rho": rho / 100
+        "Rho": rho / 100   
     }
+
+    if greek_returned == "All":
+        return greek_return_dict
+    else:
+        return greek_return_dict[greek_returned]

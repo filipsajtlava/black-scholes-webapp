@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 import numpy as np
-from pricing import black_scholes_price
+from pricing import black_scholes_price, compute_greeks
 
 def create_axes(figure):
 
@@ -196,15 +196,13 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
     ))
 
 def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
-                               modelled_price, option_type, T, r, sigma, color_toggle = False, bs_function_toggle = False):    
+                              modelled_price, option_type, T, r, sigma, color_toggle = False, bs_function_toggle = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)
 
     # x-axis 10-times the original size for the infinite profit possibility for Call options with S(t) -> +inf
-    x_prices = np.linspace(
-        0, fixed_input_max * 10, int(fixed_input_max * 20)
-    )
+    x_prices = np.linspace(0, fixed_input_max * 10, 5000 + int(fixed_input_max * 20))
 
     if option_type == "Call":  
         y_profit = np.maximum(x_prices - K, 0) - modelled_price
@@ -212,6 +210,8 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
         y_profit = np.maximum(K - x_prices, 0) - modelled_price
 
     fig = go.Figure()
+    create_axes(fig)
+
     fig.add_trace(go.Scatter(
         x = x_prices,
         y = y_profit,
@@ -220,14 +220,11 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
         showlegend=False
     ))
 
-    # Adding the main axes to the figure
-    create_axes(fig)
-
     # Names of axes and the size of the graph
     fig.update_layout(
-        xaxis_title = "S(t)",
-        yaxis_title = "Payoff (in €)",
-        height = 500,
+        xaxis_title = "S",
+        yaxis_title = "Profit / Loss (in €)",
+        height = 500
     )
 
     # Dashed lines to represent the intercepts of the function with the axes
@@ -282,4 +279,45 @@ def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
             showlegend=False
         ))
 
-    return(fig)
+    fig.update_layout(margin=dict(t=50, b=50, l=50, r=50))
+    return fig
+
+
+
+def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_plot = "Delta"):
+
+    x_values = np.linspace(x_var_config.min, x_var_config.max, 5000)
+    x_var = x_var_config.variable
+
+    parameters = {
+        "S": S,
+        "K": K,
+        "T": T,
+        "r": r,
+        "sigma": sigma
+    }
+    parameters[x_var] = x_values
+
+    y_values = compute_greeks(**parameters, option_type=option_type, greek_returned=greek_to_plot)
+
+    fig = go.Figure()
+    create_axes(fig)
+
+    fig.add_trace(go.Scatter(
+        x = x_values,
+        y = y_values,
+        mode = "lines",
+        hoverinfo="skip"
+    ))
+
+    fig.update_layout(
+        xaxis_title = f"Variable {x_var}",
+        #yaxis_title = f"{greek_to_plot}",
+        height = 210,
+        width = 200,
+        title = f"Behaviour of {greek_to_plot}"
+    )
+
+    fig.update_layout(margin=dict(t=30, b=20, l=0, r=0))
+
+    return fig
