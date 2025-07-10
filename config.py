@@ -51,3 +51,21 @@ volatility_input = input_config(
     step=0.01,
     variable="sigma"
 )
+
+paths_input = input_config(
+    label="Number of different paths",
+    min_val=1.0,
+    max_val=100000.0,
+    default_val=10000.0,
+    step=1000.0,
+    variable="paths"
+)
+
+steps_input = input_config(
+    label="Number of steps in a path",
+    min_val=10.0,
+    max_val=500.0,
+    default_val=100.0,
+    step=10.0,
+    variable="steps"
+)

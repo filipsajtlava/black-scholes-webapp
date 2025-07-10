@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 import numpy as np
-from pricing import black_scholes_price, compute_greeks
+from pricing.black_scholes import black_scholes_price, compute_greeks
 
 def create_axes(figure):
 
@@ -195,8 +195,8 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         showlegend=False
     ))
 
-def create_basic_option_graph(S, K, maximum_stock_value, maximum_strike_value,
-                              modelled_price, option_type, T, r, sigma, color_toggle = False, bs_function_toggle = False):    
+def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_strike_value,
+                              modelled_price, color_toggle = False, bs_function_toggle = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)
