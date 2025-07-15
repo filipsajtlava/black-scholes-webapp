@@ -1,30 +1,7 @@
 import plotly.graph_objects as go
 import numpy as np
-from pricing.black_scholes import black_scholes_price, compute_greeks
-
-def create_axes(figure):
-
-    # x-axis
-    figure.add_shape(
-        type = "line",
-        y0=0,
-        y1=0,
-        x0=0,
-        x1=1,
-        xref = "paper",
-        line = dict(color = "white", width = 1)
-    )
-
-    # y-axis
-    figure.add_shape(
-        type = "line",
-        y0=0,
-        y1=1,
-        x0=0,
-        x1=0,
-        yref = "paper",
-        line = dict(color = "white", width = 1)
-    )
+from black_scholes import black_scholes_price, compute_greeks
+from general import create_axes, dashed_line
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
     
@@ -138,39 +115,6 @@ def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high
             layer="below"
         )
 
-def dashed_lines(K, modelled_price, option_type, fig, arbitrary_high_value):
-
-    # Just like in the previous example, we want a high value to simulate the lines going to infinity
-
-    # Dashed lines placement [x, y] (different for Call and Put options)
-    dashed_lines = [
-        [K, arbitrary_high_value],
-        [K + (modelled_price if option_type == "Call" else -modelled_price), arbitrary_high_value]
-    ]
-
-    # Dashed lines graphing
-    for x, y in dashed_lines:     
-        fig.add_shape(
-            type="line",
-            x0=x,
-            x1=x,
-            y0=-y,
-            y1=y,
-            line=dict(color="white", width=1, dash="dash")
-        )
-
-    # Horizontal dashed line to connect the "-P" to the actual part of the function
-    if option_type == "Put":
-        fig.add_shape(
-            type="line",
-            x0=0,
-            x1=K,
-            y0=-modelled_price,
-            y1=-modelled_price,
-            line=dict(color="white", width=1, dash="dash"),
-            opacity=0.1
-        )
-
 def hover_tooltips(K, modelled_price, option_type, fig, annotations):
 
     x_hover = []
@@ -222,6 +166,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
 
     # Names of axes and the size of the graph
     fig.update_layout(
+        margin=dict(t=50, b=50, l=0, r=0),
         xaxis_title = "S",
         yaxis_title = "Profit / Loss (in €)",
         height = 500
@@ -229,7 +174,11 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
 
     # Dashed lines to represent the intercepts of the function with the axes
 
-    dashed_lines(K, modelled_price, option_type, fig, max(x_prices))
+    dashed_line(fig, [K], [-max(x_prices), max(x_prices)])
+    dashed_line(fig, [K + (modelled_price if option_type == "Call" else -modelled_price)], [-max(x_prices), max(x_prices)])
+
+    if option_type == "Put":
+        dashed_line(fig, [0, K], [-modelled_price], opacity=0.1)
 
     # The final graph will be "zoomed" on the important parts based on their size and location
     
@@ -279,10 +228,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
             showlegend=False
         ))
 
-    fig.update_layout(margin=dict(t=50, b=50, l=50, r=50))
     return fig
-
-
 
 def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_plot = "Delta"):
 
