@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from black_scholes import black_scholes_price, compute_greeks
-from monte_carlo import simulate_gbm_paths
+from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
 from black_scholes_plotting import create_basic_option_graph, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths
 from config import *
@@ -20,10 +20,10 @@ def general_padding(non_empty_column_sizes, empty_padding_size = 0.25):
 
     return st.columns(column_sizes)
 
-def get_user_inputs_bs(key_prefix, asset_config = None, strike_config = None, 
-                       time_config = None, interest_config = None, volatility_config = None,
-                       paths_config = None, steps_config = None, option_type_input = None,
-                       currency = "€"):
+def get_user_inputs(key_prefix, asset_config = None, strike_config = None, 
+                    time_config = None, interest_config = None, volatility_config = None,
+                    paths_config = None, steps_config = None, option_type_input = None,
+                    currency = CURRENCY):
 
     input_parameters = dict()
 
@@ -73,28 +73,34 @@ def get_user_inputs_bs(key_prefix, asset_config = None, strike_config = None,
                                     key=f"{key_prefix}_{volatility_config.variable}")
             input_parameters["sigma"] = sigma
 
-        if paths_config:
-            num_paths = st.number_input(label=paths_config.label, 
-                                        min_value=paths_config.min, value=paths_config.default, 
-                                        max_value=paths_config.max, step=paths_config.step,
-                                        key=f"{key_prefix}_{paths_config.variable}", format="%2f")
-            input_parameters["num_paths"] = num_paths
-        
-        if steps_config:
-            num_steps = st.number_input(label=steps_config.label, 
-                                        min_value=steps_config.min, value=steps_config.default, 
-                                        max_value=steps_config.max, step=steps_config.step,
-                                        key=f"{key_prefix}_{steps_config.variable}", format="%2f")
-            input_parameters["num_steps"] = num_steps
-
         (_, option_type_column, _) = general_padding(non_empty_column_sizes=[2.1], empty_padding_size=1)
 
         with option_type_column: 
 
             if option_type_input:
                 option_type = st.segmented_control("Option Type", ["Call", "Put"], selection_mode="single",
-                                               default="Call", key=f"{key_prefix}")
+                                                default="Call", key=f"{key_prefix}")
                 input_parameters["option_type"] = option_type
+
+    (_, slider_left, _, slider_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
+        
+    with slider_left:
+
+        if paths_config:
+            num_paths = st.number_input(label=paths_config.label, 
+                                    min_value=paths_config.min, value=paths_config.default, 
+                                    max_value=paths_config.max, step=paths_config.step,
+                                    key=f"{key_prefix}_{paths_config.variable}", format="%2f")
+            input_parameters["num_paths"] = num_paths
+        
+    with slider_right:
+
+        if steps_config:
+            num_steps = st.number_input(label=steps_config.label, 
+                                    min_value=steps_config.min, value=steps_config.default, 
+                                    max_value=steps_config.max, step=steps_config.step,
+                                    key=f"{key_prefix}_{steps_config.variable}", format="%2f")
+            input_parameters["num_steps"] = num_steps
 
     return input_parameters
 
@@ -122,7 +128,7 @@ if __name__ == "__main__":
         ) = general_padding(non_empty_column_sizes=[1.5, 1.5, 0.5])
 
         with params_column:
-            input_tab_2 = get_user_inputs_bs(key_prefix="tab_2",
+            input_tab_2 = get_user_inputs(key_prefix="tab_2",
                                              asset_config=asset_price_slider,
                                              strike_config=strike_price_slider, 
                                              time_config=time_input, 
@@ -131,22 +137,35 @@ if __name__ == "__main__":
                                              option_type_input=True)
 
         with output_column:
-            st.subheader("Option Price")
-            price = black_scholes_price(**input_tab_2)
-            st.success(f"{input_tab_2["option_type"]} option price: {price:.2f}€")
 
-            (_, output_coloring, _) = general_padding(non_empty_column_sizes=[1.25],empty_padding_size=0.75)
+            (left_output_bs, right_output_mc) = st.columns([1, 1])
+            with left_output_bs:
+                st.caption("Black-Scholes option price")
+                price = black_scholes_price(**input_tab_2)
+                st.success(f"{input_tab_2["option_type"]} option price: {price:.2f}{CURRENCY}")
+                
+            with right_output_mc:
+                st.caption("Monte-Carlo option price")
+                price = black_scholes_price(**input_tab_2)
+                st.info(f"{input_tab_2["option_type"]} option price: {price:.2f}{CURRENCY}")
+                
+
+            graph_container = st.empty()
             
-            with output_coloring:
+            (_, left_toggle, right_toggle) = st.columns([0.4, 1, 1])
+            
+            with left_toggle:
                 color_toggle = st.toggle("Toggle coloring of areas", value=True)
+            with right_toggle:
                 bs_function_toggle = st.toggle("Toggle Black-Scholes price function", value=True)
-            st.plotly_chart(create_basic_option_graph(**input_tab_2,
-                                                      maximum_stock_value=asset_price_slider.max,
-                                                      maximum_strike_value=strike_price_slider.max,
-                                                      modelled_price=price,
-                                                      color_toggle=color_toggle,
-                                                      bs_function_toggle=bs_function_toggle),
-                            use_container_width=True)
+
+            graph_container.plotly_chart(create_basic_option_graph(**input_tab_2,
+                                                maximum_stock_value=asset_price_slider.max,
+                                                maximum_strike_value=strike_price_slider.max,
+                                                modelled_price=price,
+                                                color_toggle=color_toggle,
+                                                bs_function_toggle=bs_function_toggle),
+                                        use_container_width=True)
 
         with greeks_column:
 
@@ -190,24 +209,36 @@ if __name__ == "__main__":
         ) = general_padding(non_empty_column_sizes=[1.5, 1.5, 0.5])
 
         with params_column:
-            input_tab_3 = get_user_inputs_bs(key_prefix="tab_3",
+            input_tab_3 = get_user_inputs(key_prefix="tab_3",
                                              asset_config=asset_price_slider,
+                                             strike_config=strike_price_slider,
                                              time_config=time_input, 
                                              interest_config=non_risk_interest_input, 
                                              volatility_config=volatility_input,
                                              paths_config=paths_input,
                                              steps_config=steps_input,
-                                             option_type_input=False)
-                
+                                             option_type_input=True)
+            
+            gbm_input_helper = ["S", "T", "r", "sigma", "num_paths", "num_steps"]
+            monte_carlo_input_helper = ["K", "T", "r", "option_type"]
+
+            gbm_input = {k: v for k, v in input_tab_3.items() if k in gbm_input_helper}
+            monte_carlo_input = {k: v for k, v in input_tab_3.items() if k in monte_carlo_input_helper}
+
         with output_column:
             st.subheader("Simulation")
 
-            geom_brown_motion_y = simulate_gbm_paths(**input_tab_3)
-            st.plotly_chart(plot_gbm_paths(geom_brown_motion_y  , input_tab_3["T"]),
-                            use_container_width=True)
-            if input_tab_3["num_paths"] > MAX_GBM_LINES:
-                st.caption(f"Due to performance concerns this plot only shows {MAX_GBM_LINES} randomly chosen paths.")
-            
+            geom_brown_motion_mat = simulate_gbm_paths(**gbm_input)
+
+            modelled_price_mc = monte_carlo_estimate(S_paths=geom_brown_motion_mat,
+                                                     **monte_carlo_input)
+            st.success(f"{input_tab_3["option_type"]} option price: {modelled_price_mc}{CURRENCY}")
+            gbm_plot = plot_gbm_paths(geom_brown_motion_mat, gbm_input["S"], gbm_input["T"], gbm_input["r"])
+            st.plotly_chart(gbm_plot, use_container_width=True)
+
+            if gbm_input["num_paths"] > MAX_GBM_LINES:
+                st.caption(f"Due to performance concerns this plot only shows {MAX_GBM_LINES} randomly chosen paths.")            
+
     st.markdown("""
     <style>
     .block-container {

@@ -167,7 +167,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
     # Names of axes and the size of the graph
     fig.update_layout(
         margin=dict(t=50, b=50, l=0, r=0),
-        xaxis_title = "S",
+        xaxis_title = "S(T)",
         yaxis_title = "Profit / Loss (in €)",
         height = 500
     )

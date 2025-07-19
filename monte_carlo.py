@@ -15,3 +15,16 @@ def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps):
 
     S_out = S * np.exp(log_S)
     return S_out
+
+def monte_carlo_estimate(S_paths, K, T, r, option_type):
+    n_steps = S_paths.shape[1] - 1
+
+    last_column = S_paths[:, n_steps]
+
+    if option_type == "Call":
+        payoff = np.maximum(last_column - K, 0)
+    else:
+        payoff = np.maximum(K - last_column, 0)
+
+    discounted_price = np.exp(-r * T) * np.mean(payoff)
+    return round(discounted_price, 2)

@@ -7,10 +7,11 @@ class input_config:
         self.step = step
         self.variable = variable
 
+CURRENCY = "€"
 MAX_GBM_LINES = 50
 
 asset_price_slider = input_config(
-    label="Asset price (S) in €",
+    label=f"Asset price (S) in {CURRENCY}",
     min_val=1.0,
     max_val=250.0,
     default_val=100.0,
@@ -19,7 +20,7 @@ asset_price_slider = input_config(
 )
 
 strike_price_slider = input_config(
-    label="Strike price (K) in €",
+    label=f"Strike price (K) in {CURRENCY}",
     min_val=1.0,
     max_val=250.0,
     default_val=100.0,
@@ -58,7 +59,7 @@ paths_input = input_config(
     label="Number of different paths",
     min_val=1.0,
     max_val=100000.0,
-    default_val=1000.0,
+    default_val=10000.0,
     step=500.0,
     variable="paths"
 )
