@@ -9,6 +9,7 @@ class input_config:
 
 CURRENCY = "€"
 MAX_GBM_LINES = 50
+SEED_INTERVAL = [1, 10001]
 
 asset_price_slider = input_config(
     label=f"Asset price (S) in {CURRENCY}",

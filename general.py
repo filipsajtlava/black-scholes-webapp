@@ -1,3 +1,11 @@
+import plotly.graph_objects as go
+import numpy as np
+
+def get_seed(seed_interval):
+    rng = np.random.default_rng()
+    seed = rng.integers(seed_interval[0], seed_interval[1])
+    return seed
+
 def create_axes(figure):
 
     # x-axis
@@ -22,7 +30,7 @@ def create_axes(figure):
         line = dict(color = "white", width = 1)
     )
 
-def dashed_line(fig, x_range, y_range, opacity = 1):
+def dashed_line(fig, x_range, y_range, opacity = 1, width = 2):
 
     if len(x_range) == 2 and len(y_range) == 1:
         fig.add_shape(
@@ -31,7 +39,7 @@ def dashed_line(fig, x_range, y_range, opacity = 1):
             x1=x_range[1],
             y0=y_range[0],
             y1=y_range[0],
-            line=dict(color="white", width=1, dash="dash"),
+            line=dict(color="white", width=width, dash="dash"),
             opacity=opacity
         )
     elif len(x_range) == 1 and len(y_range) == 2:
@@ -41,7 +49,7 @@ def dashed_line(fig, x_range, y_range, opacity = 1):
             x1=x_range[0],
             y0=y_range[0],
             y1=y_range[1],
-            line=dict(color="white", width=1, dash="dash"),
+            line=dict(color="white", width=width, dash="dash"),
             opacity=opacity
         )
     else:

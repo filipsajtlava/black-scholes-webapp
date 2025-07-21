@@ -1,7 +1,9 @@
 import numpy as np
 
-def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps):
+def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
     
+    np.random.seed(seed)
+
     num_paths = int(num_paths)
     num_steps = int(num_steps)
 

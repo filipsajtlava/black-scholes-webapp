@@ -242,6 +242,7 @@ def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_pl
         "r": r,
         "sigma": sigma
     }
+    chosen_variable_value = parameters[x_var]
     parameters[x_var] = x_values
 
     y_values = compute_greeks(**parameters, option_type=option_type, greek_returned=greek_to_plot)
@@ -253,16 +254,22 @@ def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_pl
         x = x_values,
         y = y_values,
         mode = "lines",
-        hoverinfo="skip"
+        hoverinfo="skip",
+        line=dict(color="#595A70")
     ))
 
     fig.update_layout(
         xaxis_title = f"Variable {x_var}",
-        #yaxis_title = f"{greek_to_plot}",
         height = 210,
         width = 200,
         title = f"Behaviour of {greek_to_plot}"
     )
+
+    y_range = [min(y_values), max(y_values)]
+    y_range_size_rel = (y_range[1] - y_range[0]) * 0.1
+    fig.update_yaxes(range=[y_range[0] - y_range_size_rel, y_range[1] + y_range_size_rel])
+
+    dashed_line(fig, [chosen_variable_value], [-10, 10])
 
     fig.update_layout(margin=dict(t=30, b=20, l=0, r=0))
 
