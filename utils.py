@@ -1,9 +1,8 @@
-import plotly.graph_objects as go
 import numpy as np
 
 def get_seed(seed_interval):
     rng = np.random.default_rng()
-    seed = rng.integers(seed_interval[0], seed_interval[1])
+    seed = rng.integers(seed_interval[0], seed_interval[1] + 1)
     return seed
 
 def create_axes(figure):

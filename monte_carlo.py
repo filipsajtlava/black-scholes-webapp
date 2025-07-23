@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import norm
 
 def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
     
@@ -18,15 +19,24 @@ def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
     S_out = S * np.exp(log_S)
     return S_out
 
-def monte_carlo_estimate(S_paths, K, T, r, option_type):
+def monte_carlo_estimate(S_paths, K, T, r, option_type, alpha = 0.05):
     n_steps = S_paths.shape[1] - 1
 
     last_column = S_paths[:, n_steps]
 
     if option_type == "Call":
-        payoff = np.maximum(last_column - K, 0)
+        payoffs = np.maximum(last_column - K, 0)
     else:
-        payoff = np.maximum(K - last_column, 0)
+        payoffs = np.maximum(K - last_column, 0)
 
-    discounted_price = np.exp(-r * T) * np.mean(payoff)
-    return round(discounted_price, 2)
+    discounted_payoff = np.exp(-r * T) * payoffs
+    price_estimate = np.mean(discounted_payoff)
+
+    std_error = np.std(discounted_payoff, ddof=1) / np.sqrt(len(payoffs))
+    z_score = norm.ppf(1 - alpha / 2)
+
+    confidence_interval = [price_estimate - std_error * z_score, price_estimate + std_error * z_score] 
+    confidence_interval = [round(val, 2) for val in confidence_interval]
+
+    return round(price_estimate, 2), confidence_interval
+

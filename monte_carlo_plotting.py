@@ -1,10 +1,10 @@
 import numpy as np
 import plotly.graph_objects as go
 from scipy.stats import gaussian_kde
-from config import MAX_GBM_LINES
-from general import dashed_line
+from config import Colors
+from utils import dashed_line
 
-def kernel_density_vertical(fig, S_paths, T, randomized_selection):
+def kernel_density_vertical(fig, S_paths, T, randomized_selection, color_config = Colors):
     terminal_prices = S_paths[randomized_selection, -1]
     
     kde = gaussian_kde(terminal_prices)
@@ -17,13 +17,13 @@ def kernel_density_vertical(fig, S_paths, T, randomized_selection):
         x = T + scaled_density,
         y = y_vals,
         mode="lines",
-        line=dict(color="#595A70")
+        line=dict(color=color_config.SEAMLESS_GREY)
     ))
 
     fig.update_xaxes(range = [T - max(scaled_density) * 0.1, T + max(scaled_density) * 1.1])
 
 
-def plot_gbm_paths(S_paths, T, r, seed):
+def plot_gbm_paths(S_paths, T, r, seed, config):
 
     np.random.seed(seed)
 
@@ -34,7 +34,7 @@ def plot_gbm_paths(S_paths, T, r, seed):
     fig = go.Figure()
     fig_end_points = go.Figure()
 
-    randomized_selection = np.random.choice(n_paths, min(MAX_GBM_LINES, n_paths), replace=False)
+    randomized_selection = np.random.choice(n_paths, min(config.MAX_GBM_LINES, n_paths), replace=False)
 
     non_risk_x = np.array([0, T])
     non_risk_linear_f = S_paths[0,0] * np.exp(r * non_risk_x)
@@ -90,3 +90,45 @@ def plot_gbm_paths(S_paths, T, r, seed):
     dashed_line(fig_end_points, [T-10000, T+10000], [S_paths[0][0] * np.exp(T * r)])
 
     return fig, fig_end_points
+
+def plot_confidence_interval(modelled_price, confidence_interval, option_type, color_config = Colors):
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=confidence_interval,
+        y=[0, 0],
+        mode="lines+markers",
+        line=dict(color=color_config.SEAMLESS_GREY),
+        hoverinfo="skip"
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=[modelled_price],
+        y=[0],
+        mode="markers",
+        hoverinfo="text",
+        hovertext=f"{option_type} option price",
+        line=dict(color=(color_config.PUT_CALL[0] if option_type == "Put" else color_config.PUT_CALL[1]))
+    ))
+
+    fig.update_layout(
+        margin=dict(t=25, b=25, l=0, r=0),
+        height=75,
+        showlegend=False,
+        title=f"95% confidence interval"
+    )
+
+    fig.update_yaxes(
+        visible=False
+    )
+
+    x_axis_values = [confidence_interval[0], modelled_price, confidence_interval[1]]
+    buffer = (max(x_axis_values) - min(x_axis_values)) * 0.15
+
+    fig.update_xaxes(tickmode="array",
+                     tickvals=x_axis_values,
+                     range=[min(x_axis_values) - buffer, max(x_axis_values) + buffer]
+                     )
+
+    return fig

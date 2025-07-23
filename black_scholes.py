@@ -1,7 +1,12 @@
 import numpy as np
 from scipy.stats import norm
 
-def black_scholes_price(S, K, T, r, sigma, option_type = "Call"):
+def calculate_d1_d2(S, K, T, r, sigma):
+    d1 = (np.log(S / K) + (r + sigma**2 * 0.5) * T) / (sigma * np.sqrt(T))
+    d2 = d1 - sigma * np.sqrt(T)
+    return d1, d2
+
+def black_scholes_price(S, K, T, r, sigma, option_type):
 
     # Parameters:
 
@@ -13,8 +18,7 @@ def black_scholes_price(S, K, T, r, sigma, option_type = "Call"):
 
     S = np.array(S)
 
-    d1 = (np.log(S / K) + (r + sigma**2 * 0.5) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
+    d1, d2 = calculate_d1_d2(S, K, T, r, sigma)
 
     if option_type == "Call":
         price = S * norm.cdf(d1) - K * np.exp(-r * T) * norm.cdf(d2)
@@ -25,12 +29,11 @@ def black_scholes_price(S, K, T, r, sigma, option_type = "Call"):
 
     return price
 
-def compute_greeks(S, K, T, r, sigma, option_type = "Call", greek_returned = "All"):
+def compute_greeks(S, K, T, r, sigma, option_type, greek_returned = "All"):
 
     S, K, T, r, sigma = map(np.array, (S, K, T, r, sigma))
 
-    d1 = (np.log(S / K) + (r + sigma**2 * 0.5) * T) / (sigma * np.sqrt(T))
-    d2 = d1 - sigma * np.sqrt(T)
+    d1, d2 = calculate_d1_d2(S, K, T, r, sigma)
 
     if option_type == "Call":
         delta = norm.cdf(d1)

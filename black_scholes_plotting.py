@@ -1,7 +1,8 @@
 import plotly.graph_objects as go
 import numpy as np
 from black_scholes import black_scholes_price, compute_greeks
-from general import create_axes, dashed_line
+from utils import create_axes, dashed_line
+from config import Colors
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
     
@@ -39,14 +40,14 @@ def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
 
     return annotations
 
-def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high_value):
+def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high_value, color_config = Colors):
 
     # Adds a colored representation of the option payoff
 
     # The arbitrary_high_value scales the areas to appear infinite-like - mainly because of the infinite possible
     # profits of the call option
 
-    colors = ["#E03C32", "#FFD301", "#7BB662"]
+    colors = color_config.PAYOFF_AREAS
 
     if option_type == "Call":
         fig.add_shape(
@@ -81,6 +82,7 @@ def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high
             opacity=0.075,
             layer="below"
         )
+        
     else:
         fig.add_shape(
             type="rect",
@@ -230,7 +232,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
 
     return fig
 
-def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_plot = "Delta"):
+def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_plot, color_config = Colors):
 
     x_values = np.linspace(x_var_config.min, x_var_config.max, 5000)
     x_var = x_var_config.variable
@@ -255,7 +257,7 @@ def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_pl
         y = y_values,
         mode = "lines",
         hoverinfo="skip",
-        line=dict(color="#595A70")
+        line=dict(color=color_config.SEAMLESS_GREY)
     ))
 
     fig.update_layout(

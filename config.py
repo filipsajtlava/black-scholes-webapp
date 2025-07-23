@@ -1,75 +1,121 @@
-class input_config:
-    def __init__(self, label, min_val, max_val, default_val, step, variable):
+class BaseInputConfig:
+    def __init__(self, label, default, variable, input_type, **kwargs):
         self.label = label
-        self.min = min_val
-        self.max = max_val
-        self.default = default_val
-        self.step = step
+        self.default = default
         self.variable = variable
+        self.type = input_type
 
-CURRENCY = "€"
-MAX_GBM_LINES = 50
-SEED_INTERVAL = [1, 10001]
+        for keys, values in kwargs.items():
+            setattr(self, keys, values)
 
-asset_price_slider = input_config(
-    label=f"Asset price (S) in {CURRENCY}",
-    min_val=1.0,
-    max_val=250.0,
-    default_val=100.0,
-    step=1.0,
-    variable="S"
-)
+class NumericConfig(BaseInputConfig): pass
+class SegmentedControlConfig(BaseInputConfig): pass
 
-strike_price_slider = input_config(
-    label=f"Strike price (K) in {CURRENCY}",
-    min_val=1.0,
-    max_val=250.0,
-    default_val=100.0,
-    step=1.0,
-    variable="K"
-)
+class AppSettings:
 
-time_input = input_config(
-    label="Time to maturity (T) in years",
-    min_val=0.0,
-    max_val=5.0,
-    default_val=1.0,
-    step=0.05,
-    variable="T"
-)
+    # ==== Constants ====
+    
+    CURRENCY = "€"
+    MAX_GBM_LINES = 50
+    SEED_INTERVAL = [1, 10000]
 
-non_risk_interest_input = input_config(
-    label="Non-risk interest rate (r)",
-    min_val=0.01,
-    max_val=0.3,
-    default_val=0.05,
-    step=0.01,
-    variable="r"
-)
+    # ==== Main input configs ====
 
-volatility_input = input_config(
-    label="Volatility (σ)",
-    min_val=0.01,
-    max_val=1.0,
-    default_val=0.1,
-    step=0.01,
-    variable="sigma"
-)
+    FIX_INPUT_CONFIGS = {
+        "S": NumericConfig(
+            label=f"Asset price (S) in {CURRENCY}",
+            min=1.0,
+            max=250.0,
+            default=100.0,
+            step=1.0,
+            variable="S",
+            input_type="slider"
+        ),
 
-paths_input = input_config(
-    label="Number of different paths",
-    min_val=1.0,
-    max_val=100000.0,
-    default_val=10000.0,
-    step=500.0,
-    variable="paths"
-)
+        "K": NumericConfig(
+            label=f"Strike price (K) in {CURRENCY}",
+            min=1.0,
+            max=250.0,
+            default=100.0,
+            step=1.0,
+            variable="K",
+            input_type="slider"
+        ),
 
-steps_input = input_config(
-    label="Number of steps in a path",
-    min_val=10.0,
-    max_val=500.0,
-    default_val=100.0,
-    step=10.0,
-    variable="steps"
-)
+        "T": NumericConfig(
+            label="Time to maturity (T) in years",
+            min=0.0,
+            max=5.0,
+            default=1.0,
+            step=0.05,
+            variable="T",
+            input_type="number_input"
+        ),
+
+        "r": NumericConfig(
+            label="Non-risk interest rate (r)",
+            min=0.01,
+            max=0.3,
+            default=0.05,
+            step=0.01,
+            variable="r",
+            input_type="number_input"
+        ),
+
+        "sigma": NumericConfig(
+            label="Volatility (σ)",
+            min=0.01,
+            max=1.0,
+            default=0.1,
+            step=0.01,
+            variable="sigma",
+            input_type="number_input"
+        ),
+        
+        "option_type": SegmentedControlConfig(
+        label="Option_type",
+        options=["Call", "Put"],
+        default="Call",
+        selection_mode="single",
+        variable="option_type",
+        input_type="segmented_control"
+        )
+    }
+
+    # ==== Monte Carlo configs ====
+
+    MC_INPUT_CONFIGS = {
+        "paths": NumericConfig(
+            label="Number of different paths",
+            min=1.0,
+            max=100000.0,
+            default=10000.0,
+            step=500.0,
+            variable="paths",
+            input_type="number_input"
+        ),
+
+        "steps": NumericConfig(
+            label="Number of steps in a path",
+            min=10.0,
+            max=500.0,
+            default=100.0,
+            step=10.0,
+            variable="steps",
+            input_type="number_input"
+        )
+    }
+
+    @classmethod
+    def get_variables_by_type(cls, input_type):
+        return [
+            input_config.variable for input_config in cls.FIX_INPUT_CONFIGS.values()
+            if input_config.type == input_type
+        ]
+    
+class Colors:
+
+    PAYOFF_AREAS = ["#E03C32", "#FFD301", "#7BB662"]
+    PUT_CALL = ["#E03C32", "#7BB662"]
+    SEAMLESS_GREY = "#595A70"
+    
