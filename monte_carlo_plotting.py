@@ -109,7 +109,7 @@ def plot_confidence_interval(modelled_price, confidence_interval, option_type, c
         mode="markers",
         hoverinfo="text",
         hovertext=f"{option_type} option price",
-        line=dict(color=(color_config.PUT_CALL[0] if option_type == "Put" else color_config.PUT_CALL[1]))
+        line=dict(color=color_config.bubble_font_option_type(option_type))
     ))
 
     fig.update_layout(

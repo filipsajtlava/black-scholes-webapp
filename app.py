@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
+from st_flexible_callout_elements import flexible_callout
 from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
 from black_scholes_plotting import create_basic_option_graph, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
 from utils import get_seed
-from config import AppSettings
+from config import AppSettings, Colors
 
 def upper_padding(pixels):
     st.markdown(f"<div style='margin-top: {pixels}px'></div>", unsafe_allow_html=True)
@@ -67,7 +68,7 @@ def get_user_inputs(key_prefix, selected_inputs = None, config = AppSettings):
                                                                       key=f"{key_prefix}_{config_class.variable}"
                                                                       )
 
-        (_, option_type_column, _) = uniform_columns(non_empty_column_sizes=[2.6], empty_padding_size=1)
+        (_, option_type_column, _) = uniform_columns(non_empty_column_sizes=[2.65], empty_padding_size=1)
 
         with option_type_column: 
 
@@ -81,6 +82,14 @@ def get_user_inputs(key_prefix, selected_inputs = None, config = AppSettings):
 
     return input_parameters
 
+def output_price_bubble(option_type, modelled_price, config = AppSettings, color_config = Colors, font_size = 20, padding = 10):
+    flexible_callout(f"{option_type} option price: {modelled_price:.2f}{config.CURRENCY}",
+                                    background_color=color_config.bubble_background_option_type(option_type),
+                                    font_color=color_config.bubble_font_option_type(option_type),
+                                    font_size=font_size,
+                                    alignment="center",
+                                    padding=padding
+                                    )
 def stage_bs_subtab(input_parameters, config = AppSettings):
 
     (   _,
@@ -93,9 +102,9 @@ def stage_bs_subtab(input_parameters, config = AppSettings):
     with plot_column:
 
         price_bs = black_scholes_price(**input_parameters)
-
         st.caption("Black-Scholes option price")
-        st.success(f"{input_parameters["option_type"]} option price: {price_bs:.2f}{config.CURRENCY}")
+        output_price_bubble(input_parameters["option_type"], price_bs)
+
         main_bs_plot_container = st.empty()
         
         (_, left_toggle, right_toggle) = st.columns([0.4, 1, 1])
@@ -202,9 +211,8 @@ def stage_gmb_subtab(input_parameters, config = AppSettings):
         geom_brown_motion_mat = simulate_gbm_paths(**gbm_input, seed=seed)
         modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat, **monte_carlo_input)
 
-        modelled_price_container.success(
-            f"{input_parameters['option_type']} option price: {modelled_price_mc:.2f}{config.CURRENCY}"
-        )
+        with modelled_price_container:
+            output_price_bubble(monte_carlo_input["option_type"], modelled_price_mc)
 
         if modelled_price_mc > 0:
             CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, monte_carlo_input["option_type"])

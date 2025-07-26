@@ -1,6 +1,8 @@
 import numpy as np
+import streamlit as st
 from scipy.stats import norm
 
+@st.cache_data
 def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
     
     np.random.seed(seed)

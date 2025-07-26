@@ -116,6 +116,27 @@ class AppSettings:
 class Colors:
 
     PAYOFF_AREAS = ["#E03C32", "#FFD301", "#7BB662"]
-    PUT_CALL = ["#E03C32", "#7BB662"]
     SEAMLESS_GREY = "#595A70"
+    BACKGROUND_BUBBLES = {
+        "Call": "#173928",
+        "Put": "#3e2428" #STREAMLIT SUCCESS, ERROR BUBBLES
+    }
+    FONT_BUBBLES = {
+        "Call": "#d4f2dd",
+        "Put": "#f9d3d1" #STREAMLIT SUCCESS, ERROR FONTS
+    }
+
+    @classmethod
+    def bubble_background_option_type(cls, option_type):
+        try:
+            return cls.BACKGROUND_BUBBLES[option_type]
+        except:
+            raise ValueError("Option type must be 'Call' or 'Put'!")
+        
+    @classmethod
+    def bubble_font_option_type(cls, option_type):
+        try:
+            return cls.FONT_BUBBLES[option_type]
+        except:
+            raise ValueError("Option type must be 'Call' or 'Put'!")
     
