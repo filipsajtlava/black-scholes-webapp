@@ -5,27 +5,10 @@ from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
 from black_scholes_plotting import create_basic_option_graph, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from utils import get_seed
-from config import AppSettings, Colors
+from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns, filter_function_args
+from config import AppSettings, Colors, Greeks
 
-def upper_padding(pixels):
-    st.markdown(f"<div style='margin-top: {pixels}px'></div>", unsafe_allow_html=True)
-
-def uniform_columns(non_empty_column_sizes, empty_padding_size = 0.25):
-
-    if len(non_empty_column_sizes) == 0:
-        raise ValueError("Empty list of inputs")
-
-    # Starting padding
-    column_sizes = [empty_padding_size]
-
-    for size in non_empty_column_sizes:
-        column_sizes.append(size)
-        column_sizes.append(empty_padding_size)
-
-    return st.columns(column_sizes)
-
-def get_user_inputs(key_prefix, selected_inputs = None, config = AppSettings):
+def get_user_inputs(key_prefix, config, selected_inputs = None):
 
     upper_padding(75)
     st.subheader("Parameters")
@@ -82,15 +65,29 @@ def get_user_inputs(key_prefix, selected_inputs = None, config = AppSettings):
 
     return input_parameters
 
-def output_price_bubble(option_type, modelled_price, config = AppSettings, color_config = Colors, font_size = 20, padding = 10):
+def render_output_price_bubble(option_type, modelled_price, config, color_config, font_size = 20, padding = 10):
     flexible_callout(f"{option_type} option price: {modelled_price:.2f}{config.CURRENCY}",
-                                    background_color=color_config.bubble_background_option_type(option_type),
-                                    font_color=color_config.bubble_font_option_type(option_type),
-                                    font_size=font_size,
-                                    alignment="center",
-                                    padding=padding
-                                    )
-def stage_bs_subtab(input_parameters, config = AppSettings):
+                     background_color=color_config.bubble_background_option_type(option_type),
+                     font_color=color_config.bubble_font_option_type(option_type),
+                     font_size=font_size,
+                     alignment="center",
+                     padding=padding
+                     )
+
+def create_greek_table(inputs):
+    greeks = pd.DataFrame(compute_greeks(**inputs), index = [0])
+    greeks.index = ["Values"]
+    st.table(greeks.transpose())
+    return greeks
+    
+def bs_graph_toggles(config):
+    selected_greek = st.selectbox("Select Greek to plot:", [g.value for g in Greeks])
+    greeks_x_options = config.get_variables_by_type("slider") + config.get_variables_by_type("number_input")
+    selected_variable = st.selectbox("Select the x-axis variable:", greeks_x_options)
+
+    return selected_greek, selected_variable
+
+def stage_bs_subtab(input_parameters, config, color_config):
 
     (   _,
         plot_column,
@@ -103,7 +100,11 @@ def stage_bs_subtab(input_parameters, config = AppSettings):
 
         price_bs = black_scholes_price(**input_parameters)
         st.caption("Black-Scholes option price")
-        output_price_bubble(input_parameters["option_type"], price_bs)
+        render_output_price_bubble(option_type=input_parameters["option_type"], 
+                                   modelled_price=price_bs,
+                                   config=config,
+                                   color_config=color_config
+                                   )
 
         main_bs_plot_container = st.empty()
         
@@ -118,6 +119,7 @@ def stage_bs_subtab(input_parameters, config = AppSettings):
                                                  maximum_stock_value=config.FIX_INPUT_CONFIGS["S"].max,
                                                  maximum_strike_value=config.FIX_INPUT_CONFIGS["K"].max,
                                                  modelled_price=price_bs,
+                                                 color_config=color_config,
                                                  color_toggle=color_toggle,
                                                  bs_function_toggle=bs_function_toggle
                                                  )
@@ -128,110 +130,107 @@ def stage_bs_subtab(input_parameters, config = AppSettings):
 
         upper_padding(10)
         mini_greeks_plot_container = st.empty()
-
-        greeks = pd.DataFrame(compute_greeks(**input_parameters), index = [0])
-        greeks.index = ["Values"]
-
         upper_padding(10)
         st.write("Greeks calculation")
-        st.table(greeks.transpose())
 
-        selected_greek = st.selectbox("Select Greek to plot:", greeks.columns)
-        greeks_x_options = config.get_variables_by_type("slider") + config.get_variables_by_type("number_input")
-        selected_variable = st.selectbox("Select the x-axis variable:", greeks_x_options)
+        create_greek_table(input_parameters)
+        selected_greek, selected_variable = bs_graph_toggles(config = config)
 
-        mini_greeks_plot = create_greek_graph(**input_parameters,
+        mini_greeks_plot = create_greek_graph(input_parameters=input_parameters,
                                               x_var_config=config.FIX_INPUT_CONFIGS[selected_variable],
-                                              greek_to_plot=selected_greek
+                                              greek_to_plot=selected_greek,
+                                              color_config=color_config
                                               )
         
         mini_greeks_plot_container.plotly_chart(mini_greeks_plot, use_container_width=True, config={'displayModeBar': False})
 
-def stage_gmb_subtab(input_parameters, config = AppSettings):
+
+
+def render_input_seed(config):
+    fixed_seed_toggle = st.toggle("Fixed seed", value=False)
+    if fixed_seed_toggle:
+        seed = st.number_input("Select seed",
+                                min_value=config.SEED_INTERVAL[0],
+                                max_value=config.SEED_INTERVAL[1],
+                                key="seed_toggle"
+                                )
+    else:
+        seed = get_seed(config.SEED_INTERVAL)
+    return seed
+
+def render_ci_plot(modelled_price_mc, confidence_interval, option_type, container):
+    if modelled_price_mc > 0:
+        CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, option_type)
+        container.plotly_chart(CI_plot, 
+                               use_container_width=True,
+                               config={"displayModeBar": False}
+                               )
+    else:
+        container.markdown(
+            """
+            <div style="height: 90px; visibility: hidden;">&nbsp;</div>
+            """,
+            unsafe_allow_html=True
+        )
+
+def render_mc_input(variable_input, config):
+    input = st.number_input(label=config.MC_INPUT_CONFIGS[variable_input].label, 
+                            min_value=config.MC_INPUT_CONFIGS[variable_input].min,
+                            value=config.MC_INPUT_CONFIGS[variable_input].default, 
+                            max_value=config.MC_INPUT_CONFIGS[variable_input].max,
+                            step=config.MC_INPUT_CONFIGS[variable_input].step,
+                            format="%2f"
+                            )
+    return input
+
+def stage_mc_subtab(input_parameters, config, color_config):
     
     (
         _,
         plot_column, 
         _, 
-        end_points_column, 
+        seed_endpoints_column, 
         _
     ) = uniform_columns([1.5, 0.5])
 
-    with end_points_column:
+    with seed_endpoints_column:
         upper_padding(1)
         confidence_interval_container = st.empty()
         end_points_container = st.empty()
-
-        fixed_seed_toggle = st.toggle("Fixed seed", value=False)
-        if fixed_seed_toggle:
-            seed = st.number_input("Select seed",
-                                   min_value=config.SEED_INTERVAL[0],
-                                   max_value=config.SEED_INTERVAL[1],
-                                   key="seed_toggle"
-                                   )
-        else:
-            seed = get_seed(config.SEED_INTERVAL)
+        seed = render_input_seed(config)
 
     with plot_column:
-
         st.caption("Monte Carlo option price")
         modelled_price_container = st.empty()
         main_gbm_plot_container = st.empty()
         under_plot_caption_container = st.empty()
 
         (_, input_left, _, input_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
-
         with input_left:
-            num_paths = st.number_input(label=config.MC_INPUT_CONFIGS["paths"].label, 
-                                        min_value=config.MC_INPUT_CONFIGS["paths"].min,
-                                        value=config.MC_INPUT_CONFIGS["paths"].default, 
-                                        max_value=config.MC_INPUT_CONFIGS["paths"].max,
-                                        step=config.MC_INPUT_CONFIGS["paths"].step,
-                                        format="%2f"
-                                        )
-
+            num_paths = render_mc_input(variable_input="paths", config=config)
         with input_right:
-            num_steps = st.number_input(label=config.MC_INPUT_CONFIGS["steps"].label, 
-                                        min_value=config.MC_INPUT_CONFIGS["steps"].min,
-                                        value=config.MC_INPUT_CONFIGS["steps"].default, 
-                                        max_value=config.MC_INPUT_CONFIGS["steps"].max,
-                                        step=config.MC_INPUT_CONFIGS["steps"].step,
-                                        format="%2f"
-                                        )
+            num_steps = render_mc_input(variable_input="steps", config=config)
 
         input_parameters = input_parameters.copy()
         input_parameters.update({"num_paths": num_paths, "num_steps": num_steps})
 
-        gbm_input_helper = ["S", "T", "r", "sigma", "num_paths", "num_steps"]
-        monte_carlo_input_helper = ["K", "T", "r", "option_type"]
-
-        gbm_input = {k: v for k, v in input_parameters.items() if k in gbm_input_helper}
-        monte_carlo_input = {k: v for k, v in input_parameters.items() if k in monte_carlo_input_helper}
-
-        geom_brown_motion_mat = simulate_gbm_paths(**gbm_input, seed=seed)
-        modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat, **monte_carlo_input)
+        gbm_args = filter_function_args(simulate_gbm_paths, input_parameters)
+        geom_brown_motion_mat = simulate_gbm_paths(**gbm_args, seed=seed)
+        mc_args = filter_function_args(monte_carlo_estimate, input_parameters)
+        modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat, **mc_args)
 
         with modelled_price_container:
-            output_price_bubble(monte_carlo_input["option_type"], modelled_price_mc)
-
-        if modelled_price_mc > 0:
-            CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, monte_carlo_input["option_type"])
-            confidence_interval_container.plotly_chart(CI_plot, 
-                                                       use_container_width=True,
-                                                       config={"displayModeBar": False})
-        else:
-            confidence_interval_container.markdown(
-                """
-                <div style="height: 90px; visibility: hidden;">&nbsp;</div>
-                """,
-                unsafe_allow_html=True
-            )
+            render_output_price_bubble(option_type=input_parameters["option_type"], 
+                                       modelled_price=modelled_price_mc,
+                                       config=config,
+                                       color_config=color_config
+                                       )
 
         gbm_plot, end_points_plot = plot_gbm_paths(S_paths=geom_brown_motion_mat,
-                                                   T=gbm_input["T"],
-                                                   r=gbm_input["r"],
+                                                   T=input_parameters["T"],
+                                                   r=input_parameters["r"],
                                                    seed=seed,
-                                                   config=AppSettings
+                                                   config=config
                                                    )
 
         main_gbm_plot_container.plotly_chart(
@@ -240,13 +239,22 @@ def stage_gmb_subtab(input_parameters, config = AppSettings):
             config={"displayModeBar": False}
         )
 
-        if gbm_input["num_paths"] > config.MAX_GBM_LINES:
+        if input_parameters["num_paths"] > config.MAX_GBM_LINES:
             under_plot_caption_container.caption(
                 f"Due to performance concerns this plot only shows {config.MAX_GBM_LINES} randomly chosen paths."
             )
 
-    with end_points_column:
-        end_points_container.plotly_chart(end_points_plot, use_container_width=False, config={"displayModeBar": False})
+    with seed_endpoints_column:
+        render_ci_plot(modelled_price_mc=modelled_price_mc,
+                       confidence_interval=confidence_interval,
+                       option_type=input_parameters["option_type"],
+                       container=confidence_interval_container
+                       )
+
+        end_points_container.plotly_chart(end_points_plot,
+                                          use_container_width=False, 
+                                          config={"displayModeBar": False}
+                                          )
 
 if __name__ == "__main__":
 
@@ -265,26 +273,27 @@ if __name__ == "__main__":
         ) = uniform_columns(non_empty_column_sizes=[1, 2], empty_padding_size=0.1)
 
         with parameter_input_column:
-            fixed_inputs = get_user_inputs(key_prefix="tab_2_1", selected_inputs=["S", "K", "T", "r", "sigma", "option_type"])
+            fixed_inputs = get_user_inputs(key_prefix="tab_2_1",
+                                           config= AppSettings,
+                                           selected_inputs=["S", "K", "T", "r", "sigma", "option_type"]
+                                           )
 
         with output_column:
-            bs_tab, gmb_tab = st.tabs(["Black-Scholes Option Pricing",
-                                       "Monte Carlo Option Pricing"])
+            bs_tab, mc_tab = st.tabs(["Black-Scholes Option Pricing",
+                                       "Monte Carlo Option Pricing"]
+                                       )
 
             with bs_tab:
-                stage_bs_subtab(fixed_inputs)
+                stage_bs_subtab(fixed_inputs, 
+                                config=AppSettings, 
+                                color_config=Colors
+                                )
 
-            with gmb_tab:
-                stage_gmb_subtab(fixed_inputs)
+            with mc_tab:
+                stage_mc_subtab(fixed_inputs, 
+                                config=AppSettings, 
+                                color_config=Colors
+                                 )
 
-
-
-
-    st.markdown("""
-    <style>
-    .block-container {
-        padding-bottom: 1rem !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+    remove_bottom_padding()
 

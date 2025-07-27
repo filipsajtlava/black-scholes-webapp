@@ -1,6 +1,7 @@
 import numpy as np
 import streamlit as st
 from scipy.stats import norm
+from config import OptionType
 
 @st.cache_data
 def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
@@ -26,7 +27,7 @@ def monte_carlo_estimate(S_paths, K, T, r, option_type, alpha = 0.05):
 
     last_column = S_paths[:, n_steps]
 
-    if option_type == "Call":
+    if option_type == OptionType.CALL.value:
         payoffs = np.maximum(last_column - K, 0)
     else:
         payoffs = np.maximum(K - last_column, 0)

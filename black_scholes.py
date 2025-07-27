@@ -60,4 +60,7 @@ def compute_greeks(S, K, T, r, sigma, option_type, greek_returned = "All"):
     if greek_returned == "All":
         return greek_return_dict
     else:
-        return greek_return_dict[greek_returned]
+        try:
+            return greek_return_dict[greek_returned]
+        except:
+            raise ValueError("Greek not in the dictionary")

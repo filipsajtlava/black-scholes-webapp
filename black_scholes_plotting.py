@@ -1,14 +1,14 @@
 import plotly.graph_objects as go
 import numpy as np
 from black_scholes import black_scholes_price, compute_greeks
-from utils import create_axes, dashed_line
-from config import Colors
+from utils_plotting import create_axes, dashed_line
+from config import OptionType
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
     
     # Annotation points added to the graph, mainly the important points like "C", "K", and the profit differential "K+C"
 
-    if option_type == "Call":
+    if option_type == OptionType.CALL.value:
         annotations = [
             [-rel_x_pos, -modelled_price, "-C"],
             [K - rel_x_pos, rel_y_pos, "K"],
@@ -40,7 +40,7 @@ def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
 
     return annotations
 
-def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high_value, color_config = Colors):
+def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high_value, color_config):
 
     # Adds a colored representation of the option payoff
 
@@ -49,7 +49,7 @@ def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high
 
     colors = color_config.PAYOFF_AREAS
 
-    if option_type == "Call":
+    if option_type == OptionType.CALL.value:
         fig.add_shape(
             type="rect",
             x0=0,
@@ -135,14 +135,14 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         hovertext=[
             f"Option price: {modelled_price:.2f}€",
             f"Strike price: {K:.2f}€",
-            f"Break-even: {K + modelled_price:.2f}€" if option_type == "Call"
+            f"Break-even: {K + modelled_price:.2f}€" if option_type == OptionType.CALL.value
             else f"Break-even: {K - modelled_price:.2f}€"
         ],
         showlegend=False
     ))
 
 def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_strike_value,
-                              modelled_price, color_toggle = False, bs_function_toggle = False):    
+                              modelled_price, color_config, color_toggle = False, bs_function_toggle = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)
@@ -150,7 +150,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
     # x-axis 10-times the original size for the infinite profit possibility for Call options with S(t) -> +inf
     x_prices = np.linspace(0, fixed_input_max * 10, 5000 + int(fixed_input_max * 20))
 
-    if option_type == "Call":  
+    if option_type == OptionType.CALL.value:  
         y_profit = np.maximum(x_prices - K, 0) - modelled_price
     else:
         y_profit = np.maximum(K - x_prices, 0) - modelled_price
@@ -177,7 +177,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
     # Dashed lines to represent the intercepts of the function with the axes
 
     dashed_line(fig, [K], [-max(x_prices), max(x_prices)])
-    dashed_line(fig, [K + (modelled_price if option_type == "Call" else -modelled_price)], [-max(x_prices), max(x_prices)])
+    dashed_line(fig, [K + (modelled_price if option_type == OptionType.CALL.value else -modelled_price)], [-max(x_prices), max(x_prices)])
 
     if option_type == "Put":
         dashed_line(fig, [0, K], [-modelled_price], opacity=0.1)
@@ -186,7 +186,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
     
     # This means that the positions of the annotations have to be changed relatively to the "zoom"
 
-    if option_type == "Call":
+    if option_type == OptionType.CALL.value:
         x_axis_output_visual = [-(variable_input_max / 15), K + modelled_price + variable_input_max / 2.5]
     else:
         x_axis_output_visual = [-(variable_input_max / 15), K + variable_input_max / 2.5]
@@ -212,7 +212,7 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
     hover_tooltips(K, modelled_price, option_type, fig, annotations)
 
     if color_toggle:
-        profit_loss_areas(K, modelled_price, option_type, fig, max(x_prices), max(x_prices))
+        profit_loss_areas(K, modelled_price, option_type, fig, max(x_prices), max(x_prices), color_config)
 
     # x and y axes are adjusted accordingly to the size and shape of the graph
     fig.update_xaxes(range = x_axis_output_visual)
@@ -232,22 +232,15 @@ def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_valu
 
     return fig
 
-def create_greek_graph(x_var_config, S, K, T, r, sigma, option_type, greek_to_plot, color_config = Colors):
+def create_greek_graph(input_parameters, x_var_config, greek_to_plot, color_config):
+    input_parameters = input_parameters.copy()
 
     x_values = np.linspace(x_var_config.min, x_var_config.max, 5000)
     x_var = x_var_config.variable
+    chosen_variable_value = input_parameters[x_var]
+    input_parameters[x_var] = x_values
 
-    parameters = {
-        "S": S,
-        "K": K,
-        "T": T,
-        "r": r,
-        "sigma": sigma
-    }
-    chosen_variable_value = parameters[x_var]
-    parameters[x_var] = x_values
-
-    y_values = compute_greeks(**parameters, option_type=option_type, greek_returned=greek_to_plot)
+    y_values = compute_greeks(**input_parameters, greek_returned=greek_to_plot)
 
     fig = go.Figure()
     create_axes(fig)

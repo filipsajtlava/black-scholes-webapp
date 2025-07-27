@@ -1,55 +1,39 @@
 import numpy as np
+import streamlit as st
+from inspect import signature
 
 def get_seed(seed_interval):
     rng = np.random.default_rng()
     seed = rng.integers(seed_interval[0], seed_interval[1] + 1)
     return seed
 
-def create_axes(figure):
+def upper_padding(pixels):
+    st.markdown(f"<div style='margin-top: {pixels}px'></div>", unsafe_allow_html=True)
 
-    # x-axis
-    figure.add_shape(
-        type = "line",
-        y0=0,
-        y1=0,
-        x0=0,
-        x1=1,
-        xref = "paper",
-        line = dict(color = "white", width = 1)
-    )
+def remove_bottom_padding():
+    st.markdown("""
+    <style>
+    .block-container {
+        padding-bottom: 1rem !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    # y-axis
-    figure.add_shape(
-        type = "line",
-        y0=0,
-        y1=1,
-        x0=0,
-        x1=0,
-        yref = "paper",
-        line = dict(color = "white", width = 1)
-    )
+def uniform_columns(non_empty_column_sizes, empty_padding_size = 0.25):
 
-def dashed_line(fig, x_range, y_range, opacity = 1, width = 2):
+    if len(non_empty_column_sizes) == 0:
+        raise ValueError("Empty list of inputs")
 
-    if len(x_range) == 2 and len(y_range) == 1:
-        fig.add_shape(
-            type="line",
-            x0=x_range[0],
-            x1=x_range[1],
-            y0=y_range[0],
-            y1=y_range[0],
-            line=dict(color="white", width=width, dash="dash"),
-            opacity=opacity
-        )
-    elif len(x_range) == 1 and len(y_range) == 2:
-        fig.add_shape(
-            type="line",
-            x0=x_range[0],
-            x1=x_range[0],
-            y0=y_range[0],
-            y1=y_range[1],
-            line=dict(color="white", width=width, dash="dash"),
-            opacity=opacity
-        )
-    else:
-        raise ValueError("Invalid x_range and y_range dimensions. Expected 2 for one axis and 1 for the other")
+    # Starting padding
+    column_sizes = [empty_padding_size]
+
+    for size in non_empty_column_sizes:
+        column_sizes.append(size)
+        column_sizes.append(empty_padding_size)
+
+    return st.columns(column_sizes)
+
+def filter_function_args(func, args_dict):
+    sig = signature(func)
+    return {key: value for key, value in args_dict.items() if key in sig.parameters}
+

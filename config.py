@@ -1,3 +1,24 @@
+from enum import Enum
+
+# ===========================
+# ==== 'Fixed' constants ====
+# ===========================
+
+class OptionType(str, Enum):
+    CALL = "Call"
+    PUT = "Put"
+
+class Greeks(str, Enum):
+    DELTA = "Delta"
+    GAMMA = "Gamma"
+    VEGA = "Vega"
+    THETA = "Theta"
+    RHO = "Rho"
+
+# ==============================
+# ==== 'Variable' constants ====
+# ==============================
+
 class BaseInputConfig:
     def __init__(self, label, default, variable, input_type, **kwargs):
         self.label = label
@@ -13,13 +34,17 @@ class SegmentedControlConfig(BaseInputConfig): pass
 
 class AppSettings:
 
+    # ===================
     # ==== Constants ====
+    # ===================
     
     CURRENCY = "€"
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
 
+    # ============================
     # ==== Main input configs ====
+    # ============================
 
     FIX_INPUT_CONFIGS = {
         "S": NumericConfig(
@@ -74,15 +99,17 @@ class AppSettings:
         
         "option_type": SegmentedControlConfig(
         label="Option_type",
-        options=["Call", "Put"],
-        default="Call",
+        options=[OptionType.CALL.value, OptionType.PUT.value],
+        default=OptionType.CALL.value,
         selection_mode="single",
         variable="option_type",
         input_type="segmented_control"
         )
     }
 
+    # =============================
     # ==== Monte Carlo configs ====
+    # =============================
 
     MC_INPUT_CONFIGS = {
         "paths": NumericConfig(
@@ -112,18 +139,18 @@ class AppSettings:
             input_config.variable for input_config in cls.FIX_INPUT_CONFIGS.values()
             if input_config.type == input_type
         ]
-    
+       
 class Colors:
 
     PAYOFF_AREAS = ["#E03C32", "#FFD301", "#7BB662"]
     SEAMLESS_GREY = "#595A70"
     BACKGROUND_BUBBLES = {
-        "Call": "#173928",
-        "Put": "#3e2428" #STREAMLIT SUCCESS, ERROR BUBBLES
+        OptionType.CALL.value: "#173928",
+        OptionType.PUT.value: "#3e2428" #STREAMLIT SUCCESS, ERROR BUBBLES
     }
     FONT_BUBBLES = {
-        "Call": "#d4f2dd",
-        "Put": "#f9d3d1" #STREAMLIT SUCCESS, ERROR FONTS
+        OptionType.CALL.value: "#d4f2dd",
+        OptionType.PUT.value: "#f9d3d1" #STREAMLIT SUCCESS, ERROR FONTS
     }
 
     @classmethod
@@ -131,12 +158,11 @@ class Colors:
         try:
             return cls.BACKGROUND_BUBBLES[option_type]
         except:
-            raise ValueError("Option type must be 'Call' or 'Put'!")
+            raise ValueError(f"Option type must be '{OptionType.CALL.value}' or '{OptionType.PUT.value}'!")
         
     @classmethod
     def bubble_font_option_type(cls, option_type):
         try:
             return cls.FONT_BUBBLES[option_type]
         except:
-            raise ValueError("Option type must be 'Call' or 'Put'!")
-    
+            raise ValueError(f"Option type must be '{OptionType.CALL.value}' or '{OptionType.PUT.value}'!") 
