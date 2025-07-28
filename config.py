@@ -4,6 +4,17 @@ from enum import Enum
 # ==== 'Fixed' constants ====
 # ===========================
 
+class VariableKey(str, Enum): # define new variables / inputs through this it's more stable
+    S = "S"
+    K = "K"
+    T = "T"
+    R = "r"
+    SIGMA = "sigma"
+    OPTION_TYPE = "option_type"
+    PATHS = "paths"
+    STEPS = "steps"
+    INTERVAL = "interval"
+
 class OptionType(str, Enum):
     CALL = "Call"
     PUT = "Put"
@@ -15,22 +26,47 @@ class Greeks(str, Enum):
     THETA = "Theta"
     RHO = "Rho"
 
+class CandlestickInterval(str, Enum):
+    MINUTE = "1m"
+    HOUR = "1h"
+    DAY = "1d"
+    WEEK = "1wk"
+    MONTH = "1mo"
+
+MAX_PERIODS = {
+    CandlestickInterval.MINUTE.value: "7d",
+    CandlestickInterval.HOUR.value: "60d",
+    CandlestickInterval.DAY.value: "max",
+    CandlestickInterval.WEEK.value: "max",
+    CandlestickInterval.MONTH.value: "max",
+}
+
+# =====================
+# ==== Definitions ====
+# =====================
+
+class NumericSliderConfig:
+    def __init__(self, label, min_value, max_value, default, step, variable, input_type):
+            self.label = label
+            self.min = min_value
+            self.max = max_value
+            self.default = default
+            self.step = step
+            self.variable = variable
+            self.type = input_type
+
+class SegmentedControlConfig:
+    def __init__(self, label, options, default, selection_mode, variable):
+        self.label = label
+        self.options = options
+        self.default = default
+        self.selection_mode = selection_mode
+        self.variable = variable
+        self.type = "segmented_control"
+
 # ==============================
 # ==== 'Variable' constants ====
 # ==============================
-
-class BaseInputConfig:
-    def __init__(self, label, default, variable, input_type, **kwargs):
-        self.label = label
-        self.default = default
-        self.variable = variable
-        self.type = input_type
-
-        for keys, values in kwargs.items():
-            setattr(self, keys, values)
-
-class NumericConfig(BaseInputConfig): pass
-class SegmentedControlConfig(BaseInputConfig): pass
 
 class AppSettings:
 
@@ -47,53 +83,53 @@ class AppSettings:
     # ============================
 
     FIX_INPUT_CONFIGS = {
-        "S": NumericConfig(
+        "S": NumericSliderConfig(
             label=f"Asset price (S) in {CURRENCY}",
-            min=1.0,
-            max=250.0,
+            min_value=1.0,
+            max_value=250.0,
             default=100.0,
             step=1.0,
-            variable="S",
+            variable=VariableKey.S.value,
             input_type="slider"
         ),
 
-        "K": NumericConfig(
+        "K": NumericSliderConfig(
             label=f"Strike price (K) in {CURRENCY}",
-            min=1.0,
-            max=250.0,
+            min_value=1.0,
+            max_value=250.0,
             default=100.0,
             step=1.0,
-            variable="K",
+            variable=VariableKey.K.value,
             input_type="slider"
         ),
 
-        "T": NumericConfig(
+        "T": NumericSliderConfig(
             label="Time to maturity (T) in years",
-            min=0.0,
-            max=5.0,
+            min_value=0.0,
+            max_value=5.0,
             default=1.0,
             step=0.05,
-            variable="T",
+            variable=VariableKey.T.value,
             input_type="number_input"
         ),
 
-        "r": NumericConfig(
+        "r": NumericSliderConfig(
             label="Non-risk interest rate (r)",
-            min=0.01,
-            max=0.3,
+            min_value=0.01,
+            max_value=0.3,
             default=0.05,
             step=0.01,
-            variable="r",
+            variable=VariableKey.R.value,
             input_type="number_input"
         ),
 
-        "sigma": NumericConfig(
+        "sigma": NumericSliderConfig(
             label="Volatility (σ)",
-            min=0.01,
-            max=1.0,
+            min_value=0.01,
+            max_value=1.0,
             default=0.1,
             step=0.01,
-            variable="sigma",
+            variable=VariableKey.SIGMA.value,
             input_type="number_input"
         ),
         
@@ -102,8 +138,7 @@ class AppSettings:
         options=[OptionType.CALL.value, OptionType.PUT.value],
         default=OptionType.CALL.value,
         selection_mode="single",
-        variable="option_type",
-        input_type="segmented_control"
+        variable=VariableKey.OPTION_TYPE.value
         )
     }
 
@@ -112,23 +147,23 @@ class AppSettings:
     # =============================
 
     MC_INPUT_CONFIGS = {
-        "paths": NumericConfig(
+        "paths": NumericSliderConfig(
             label="Number of different paths",
-            min=1.0,
-            max=100000.0,
+            min_value=1.0,
+            max_value=100000.0,
             default=10000.0,
             step=500.0,
-            variable="paths",
+            variable=VariableKey.PATHS.value,
             input_type="number_input"
         ),
 
-        "steps": NumericConfig(
+        "steps": NumericSliderConfig(
             label="Number of steps in a path",
-            min=10.0,
-            max=500.0,
+            min_value=10.0,
+            max_value=500.0,
             default=100.0,
             step=10.0,
-            variable="steps",
+            variable=VariableKey.STEPS.value,
             input_type="number_input"
         )
     }
@@ -139,7 +174,21 @@ class AppSettings:
             input_config.variable for input_config in cls.FIX_INPUT_CONFIGS.values()
             if input_config.type == input_type
         ]
-       
+    
+    # =============================
+    # ==== Candlestick configs ====
+    # =============================
+
+    CANDLESTICK_CONFIGS = {
+        "interval": SegmentedControlConfig(
+            label="Select time interval",
+            options=[interval.value for interval in CandlestickInterval],
+            default=CandlestickInterval.DAY.value,
+            selection_mode="single",
+            variable=VariableKey.INTERVAL.value
+            )
+    }
+
 class Colors:
 
     PAYOFF_AREAS = ["#E03C32", "#FFD301", "#7BB662"]

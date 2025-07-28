@@ -141,8 +141,8 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         showlegend=False
     ))
 
-def create_basic_option_graph(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_strike_value,
-                              modelled_price, color_config, color_toggle = False, bs_function_toggle = False):    
+def plot_payoffs(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_strike_value,
+                 modelled_price, color_config, color_toggle = False, bs_function_toggle = False):    
 
     fixed_input_max = max(maximum_stock_value, maximum_strike_value)
     variable_input_max = max(S, K)

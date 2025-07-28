@@ -3,10 +3,11 @@ import pandas as pd
 from st_flexible_callout_elements import flexible_callout
 from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
-from black_scholes_plotting import create_basic_option_graph, create_greek_graph
+from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
 from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns, filter_function_args
-from config import AppSettings, Colors, Greeks
+from config import AppSettings, Colors, Greeks, VariableKey
+from candlestick_plotting import plot_candlestick_asset
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):
 
@@ -80,7 +81,7 @@ def create_greek_table(inputs):
     st.table(greeks.transpose())
     return greeks
     
-def bs_graph_toggles(config):
+def render_bs_graph_toggles(config):
     selected_greek = st.selectbox("Select Greek to plot:", [g.value for g in Greeks])
     greeks_x_options = config.get_variables_by_type("slider") + config.get_variables_by_type("number_input")
     selected_variable = st.selectbox("Select the x-axis variable:", greeks_x_options)
@@ -100,7 +101,7 @@ def stage_bs_subtab(input_parameters, config, color_config):
 
         price_bs = black_scholes_price(**input_parameters)
         st.caption("Black-Scholes option price")
-        render_output_price_bubble(option_type=input_parameters["option_type"], 
+        render_output_price_bubble(option_type=input_parameters[VariableKey.OPTION_TYPE.value], 
                                    modelled_price=price_bs,
                                    config=config,
                                    color_config=color_config
@@ -115,14 +116,14 @@ def stage_bs_subtab(input_parameters, config, color_config):
         with right_toggle:
             bs_function_toggle = st.toggle("Toggle Black-Scholes price function", value=True)
 
-        main_bs_plot = create_basic_option_graph(**input_parameters,
-                                                 maximum_stock_value=config.FIX_INPUT_CONFIGS["S"].max,
-                                                 maximum_strike_value=config.FIX_INPUT_CONFIGS["K"].max,
-                                                 modelled_price=price_bs,
-                                                 color_config=color_config,
-                                                 color_toggle=color_toggle,
-                                                 bs_function_toggle=bs_function_toggle
-                                                 )
+        main_bs_plot = plot_payoffs(**input_parameters,
+                                    maximum_stock_value=config.FIX_INPUT_CONFIGS[VariableKey.S.value].max,
+                                    maximum_strike_value=config.FIX_INPUT_CONFIGS[VariableKey.K.value].max,
+                                    modelled_price=price_bs,
+                                    color_config=color_config,
+                                    color_toggle=color_toggle,
+                                    bs_function_toggle=bs_function_toggle
+                                    )
                     
         main_bs_plot_container.plotly_chart(main_bs_plot, use_container_width=True)
 
@@ -134,7 +135,7 @@ def stage_bs_subtab(input_parameters, config, color_config):
         st.write("Greeks calculation")
 
         create_greek_table(input_parameters)
-        selected_greek, selected_variable = bs_graph_toggles(config = config)
+        selected_greek, selected_variable = render_bs_graph_toggles(config = config)
 
         mini_greeks_plot = create_greek_graph(input_parameters=input_parameters,
                                               x_var_config=config.FIX_INPUT_CONFIGS[selected_variable],
@@ -207,12 +208,12 @@ def stage_mc_subtab(input_parameters, config, color_config):
 
         (_, input_left, _, input_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
         with input_left:
-            num_paths = render_mc_input(variable_input="paths", config=config)
+            num_paths = render_mc_input(variable_input=VariableKey.PATHS.value, config=config)
         with input_right:
-            num_steps = render_mc_input(variable_input="steps", config=config)
+            num_steps = render_mc_input(variable_input=VariableKey.STEPS.value, config=config)
 
         input_parameters = input_parameters.copy()
-        input_parameters.update({"num_paths": num_paths, "num_steps": num_steps})
+        input_parameters.update({VariableKey.PATHS.value: num_paths, VariableKey.STEPS.value: num_steps})
 
         gbm_args = filter_function_args(simulate_gbm_paths, input_parameters)
         geom_brown_motion_mat = simulate_gbm_paths(**gbm_args, seed=seed)
@@ -256,12 +257,58 @@ def stage_mc_subtab(input_parameters, config, color_config):
                                           config={"displayModeBar": False}
                                           )
 
+
+
+def stage_candlestick_tab(key_prefix, config, color_config):
+    (
+        _,
+        main_plot_column,
+        _
+    ) = uniform_columns(non_empty_column_sizes=[1], empty_padding_size=1)
+
+    with main_plot_column:
+        
+        selected_ticker = st.multiselect("Select asset to plot:",
+                                         ["AAPL", "MSFT", "TSLA", "GOOG", "AMZN", "NVDA"],
+                                         max_selections=1)
+
+        main_plot_container = st.empty()
+
+        (
+            _,
+            interval_input_column,
+            _,
+            stats_column,
+            _
+        ) = uniform_columns(non_empty_column_sizes=[2,2])
+
+        with interval_input_column:
+            segmented_control_interval_container = st.empty()
+        
+        with stats_column:
+            stats_container = st.empty()
+
+        selected_interval = segmented_control_interval_container.segmented_control(
+            label=config.CANDLESTICK_CONFIGS["interval"].label,
+            options=config.CANDLESTICK_CONFIGS["interval"].options,
+            default=config.CANDLESTICK_CONFIGS["interval"].default,
+            selection_mode=config.CANDLESTICK_CONFIGS["interval"].selection_mode,
+            key=f"{key_prefix}_{config.CANDLESTICK_CONFIGS["interval"].variable}"
+        )
+
+        plot_candlestick_asset(selected_ticker=selected_ticker,
+                               selected_interval=)
+
+
 if __name__ == "__main__":
 
     st.set_page_config(page_title="Option Pricing App", layout="wide")
     tab_1, tab_2, tab_3 = st.tabs(["Math", 
                                    "Option Pricing",
                                    "Application of the option pricing"])
+
+    with tab_1:
+        pass
 
     with tab_2:
         (
@@ -294,6 +341,14 @@ if __name__ == "__main__":
                                 config=AppSettings, 
                                 color_config=Colors
                                  )
+                
+    with tab_3:
+        stage_candlestick_tab(key_prefix="tab_3_1",
+                              config=AppSettings,
+                              color_config=Colors
+                              )
+
+
 
     remove_bottom_padding()
 

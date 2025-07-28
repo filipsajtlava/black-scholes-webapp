@@ -4,9 +4,13 @@ from scipy.stats import norm
 from config import OptionType
 
 @st.cache_data
-def simulate_gbm_paths(S, T, r, sigma, num_paths, num_steps, seed):
+def simulate_gbm_paths(S, T, r, sigma, paths, steps, seed):
     
     np.random.seed(seed)
+
+    # For clarity
+    num_paths = paths
+    num_steps = steps
 
     num_paths = int(num_paths)
     num_steps = int(num_steps)
