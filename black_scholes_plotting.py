@@ -150,8 +150,8 @@ def plot_payoffs(selected_parameters, modelled_price, config,
     except KeyError as error:
         raise ValueError(f"Missing variable in the list: {error}")  
 
-    fixed_input_max = max(config.FIX_INPUT_CONFIGS[VariableKey.S.value].max, 
-                          config.FIX_INPUT_CONFIGS[VariableKey.K.value].max
+    fixed_input_max = max(config.STREAMLIT_INPUT_CONFIGS[VariableKey.S.value].max, 
+                          config.STREAMLIT_INPUT_CONFIGS[VariableKey.K.value].max
                           )
     variable_input_max = max(S, K)
 

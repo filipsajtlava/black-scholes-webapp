@@ -7,6 +7,3 @@ def plot_candlestick_asset(selected_ticker, selected_interval, config, color_con
                      interval=selected_interval,
                      period=MAX_PERIODS[selected_interval]
                      )
-    
-
-    ticker = yf.download("AAPL")

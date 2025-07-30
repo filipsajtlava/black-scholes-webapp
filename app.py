@@ -5,8 +5,8 @@ from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns
-from config import AppSettings, Colors, Greeks, VariableKey
+from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns, streamlit_input_ui
+from config import AppSettings, Colors, Greeks, VariableKey, StreamlitInputs
 from candlestick_plotting import plot_candlestick_asset
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):
@@ -14,55 +14,35 @@ def get_user_inputs(key_prefix, config, selected_inputs = None):
     upper_padding(75)
     st.subheader("Parameters")
 
-    chosen_sliders = [
-        config.FIX_INPUT_CONFIGS[var] for var in config.get_variables_by_type("slider")
+    slider_vars = [
+        var for var in config.get_variables_by_type(StreamlitInputs.SLIDER.value)
         if var in selected_inputs
     ]
-    chosen_num_inputs = [
-        config.FIX_INPUT_CONFIGS[var] for var in config.get_variables_by_type("number_input")
+    number_input_vars = [
+        var for var in config.get_variables_by_type(StreamlitInputs.NUMBER_INPUT.value)
         if var in selected_inputs
     ]
-    chosen_seg_controls = [
-        config.FIX_INPUT_CONFIGS[var] for var in config.get_variables_by_type("segmented_control")
+    segmented_control_vars = [
+        var for var in config.get_variables_by_type(StreamlitInputs.SEGMENTED_CONTROL.value)
         if var in selected_inputs
     ]
     
     input_parameters = dict()
 
-    for config_class in chosen_sliders:
-        input_parameters[config_class.variable] = st.slider(label=config_class.label,
-                                                            min_value=config_class.min,
-                                                            value=config_class.default,
-                                                            max_value=config_class.max,
-                                                            step=config_class.step,
-                                                            key=f"{key_prefix}_{config_class.variable}",
-                                                            format=f"%2f {config.CURRENCY}"
-                                                            )
+    for var in slider_vars:
+        input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
         
     (_, num_inputs_column, _) = uniform_columns(non_empty_column_sizes=[1.5], empty_padding_size=1)
 
     with num_inputs_column:
-
-        for config_class in chosen_num_inputs:
-            input_parameters[config_class.variable] = st.number_input(label=config_class.label,
-                                                                      min_value=config_class.min,
-                                                                      value=config_class.default,
-                                                                      max_value=config_class.max,
-                                                                      step=config_class.step,
-                                                                      key=f"{key_prefix}_{config_class.variable}"
-                                                                      )
+        for var in number_input_vars:
+            input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
 
         (_, option_type_column, _) = uniform_columns(non_empty_column_sizes=[2.65], empty_padding_size=1)
 
         with option_type_column: 
-
-            for config_class in chosen_seg_controls:
-                input_parameters[config_class.variable] = st.segmented_control(label=config_class.label,
-                                                                               options=config_class.options,
-                                                                               default=config_class.default,
-                                                                               selection_mode=config_class.selection_mode,
-                                                                               key=f"{key_prefix}_{config_class.variable}"
-                                                                               )
+            for var in segmented_control_vars:
+                input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
 
     return input_parameters
 
@@ -137,7 +117,7 @@ def stage_bs_subtab(input_parameters, config, color_config):
         selected_greek, selected_variable = render_bs_graph_toggles(config=config)
 
         mini_greeks_plot = create_greek_graph(selected_parameters=input_parameters,
-                                              x_var_config=config.FIX_INPUT_CONFIGS[selected_variable],
+                                              x_var_config=config.STREAMLIT_INPUT_CONFIGS[selected_variable],
                                               greek_to_plot=selected_greek,
                                               color_config=color_config
                                               )
@@ -150,10 +130,10 @@ def render_input_seed(config):
     fixed_seed_toggle = st.toggle("Fixed seed", value=False)
     if fixed_seed_toggle:
         seed = st.number_input("Select seed",
-                                min_value=config.SEED_INTERVAL[0],
-                                max_value=config.SEED_INTERVAL[1],
-                                key="seed_toggle"
-                                )
+                               min_value=config.SEED_INTERVAL[0],
+                               max_value=config.SEED_INTERVAL[1],
+                               key="seed_toggle"
+                               )
     else:
         seed = get_seed(config.SEED_INTERVAL)
     return seed
@@ -174,27 +154,12 @@ def render_ci_plot(modelled_price_mc, confidence_interval, option_type, containe
         )
 
 def render_mc_input(config):
-
-    paths_key = VariableKey.PATHS.value
-    steps_key = VariableKey.STEPS.value
-
     (_, input_left, _, input_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
     with input_left:
-        num_paths = st.number_input(label=config.MC_INPUT_CONFIGS[paths_key].label, 
-                                    min_value=config.MC_INPUT_CONFIGS[paths_key].min,
-                                    value=config.MC_INPUT_CONFIGS[paths_key].default, 
-                                    max_value=config.MC_INPUT_CONFIGS[paths_key].max,
-                                    step=config.MC_INPUT_CONFIGS[paths_key].step,
-                                    format="%2f"
-                                    )
+        num_paths = streamlit_input_ui(variable=VariableKey.PATHS.value, config=config)
     with input_right:
-        num_steps = st.number_input(label=config.MC_INPUT_CONFIGS[steps_key].label, 
-                                    min_value=config.MC_INPUT_CONFIGS[steps_key].min,
-                                    value=config.MC_INPUT_CONFIGS[steps_key].default, 
-                                    max_value=config.MC_INPUT_CONFIGS[steps_key].max,
-                                    step=config.MC_INPUT_CONFIGS[steps_key].step,
-                                    format="%2f"
-                                    )
+        num_steps = streamlit_input_ui(variable=VariableKey.STEPS.value, config=config)
+    
     return num_paths, num_steps
 
 def stage_mc_subtab(input_parameters, config, color_config):
@@ -270,6 +235,9 @@ def stage_mc_subtab(input_parameters, config, color_config):
 
 
 
+def render_interval_input(config):
+    pass
+
 def stage_candlestick_tab(key_prefix, config, color_config):
     (
         _,
@@ -299,25 +267,24 @@ def stage_candlestick_tab(key_prefix, config, color_config):
         with stats_column:
             stats_container = st.empty()
 
-        selected_interval = segmented_control_interval_container.segmented_control(
-            label=config.CANDLESTICK_CONFIGS["interval"].label,
-            options=config.CANDLESTICK_CONFIGS["interval"].options,
-            default=config.CANDLESTICK_CONFIGS["interval"].default,
-            selection_mode=config.CANDLESTICK_CONFIGS["interval"].selection_mode,
-            key=f"{key_prefix}_{config.CANDLESTICK_CONFIGS["interval"].variable}"
-        )
+        selected_interval = streamlit_input_ui(variable=VariableKey.INTERVAL.value, 
+                                               config=config,
+                                               key=key_prefix,
+                                               container=segmented_control_interval_container
+                                               )
 
         plot_candlestick_asset(selected_ticker=selected_ticker,
-                               selected_interval=None
+                               selected_interval=selected_interval,
+                               config=config,
+                               color_config=color_config
                                )
+
 
 
 if __name__ == "__main__":
 
     st.set_page_config(page_title="Option Pricing App", layout="wide")
-    tab_1, tab_2, tab_3 = st.tabs(["Math", 
-                                   "Option Pricing",
-                                   "Option Pricing in Practice"])
+    tab_1, tab_2, tab_3 = st.tabs(["Math", "Option Pricing", "Option Pricing in Practice"])
 
     with tab_1:
         pass
@@ -344,29 +311,16 @@ if __name__ == "__main__":
                                            )
 
         with output_column:
-            bs_tab, mc_tab = st.tabs(["Black-Scholes Option Pricing",
-                                       "Monte Carlo Option Pricing"]
-                                       )
+            bs_tab, mc_tab = st.tabs(["Black-Scholes Option Pricing", "Monte Carlo Option Pricing"])
 
             with bs_tab:
-                stage_bs_subtab(fixed_inputs, 
-                                config=AppSettings, 
-                                color_config=Colors
-                                )
+                stage_bs_subtab(fixed_inputs, config=AppSettings, color_config=Colors)
 
             with mc_tab:
-                stage_mc_subtab(fixed_inputs, 
-                                config=AppSettings, 
-                                color_config=Colors
-                                 )
+                stage_mc_subtab(fixed_inputs, config=AppSettings, color_config=Colors)
                 
     with tab_3:
-        stage_candlestick_tab(key_prefix="tab_3_1",
-                              config=AppSettings,
-                              color_config=Colors
-                              )
-
-
+        stage_candlestick_tab(key_prefix="tab_3_1", config=AppSettings, color_config=Colors)
 
     remove_bottom_padding()
 

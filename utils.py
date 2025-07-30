@@ -1,5 +1,6 @@
 import numpy as np
 import streamlit as st
+from config import StreamlitInputs
 #from inspect import signature
 
 def get_seed(seed_interval):
@@ -33,7 +34,41 @@ def uniform_columns(non_empty_column_sizes, empty_padding_size = 0.25):
 
     return st.columns(column_sizes)
 
-# Not really used in the current version
+def streamlit_input_ui(variable, config, key = None, container = None):
+    config_subclass = config.STREAMLIT_INPUT_CONFIGS[variable]
+    key = f"{key}_{config_subclass.variable}" if key else key
+    container = container if container else st 
+
+    if config_subclass.type == StreamlitInputs.SLIDER.value:
+        input_value = container.slider(label=config_subclass.label,
+                                min_value=config_subclass.min,
+                                value=config_subclass.default,
+                                max_value=config_subclass.max,
+                                step=config_subclass.step,
+                                key=key
+                                #format=f"%2f {config.CURRENCY}"
+                                )
+    elif config_subclass.type == StreamlitInputs.NUMBER_INPUT.value:
+        input_value = container.number_input(label=config_subclass.label,
+                                      min_value=config_subclass.min,
+                                      value=config_subclass.default,
+                                      max_value=config_subclass.max,
+                                      step=config_subclass.step,
+                                      key=key
+                                      #format=f"%2f {config.CURRENCY}"
+                                      )
+    elif config_subclass.type == StreamlitInputs.SEGMENTED_CONTROL.value:
+        input_value = container.segmented_control(label=config_subclass.label,
+                                           options=config_subclass.options,
+                                           default=config_subclass.default,
+                                           selection_mode=config_subclass.selection_mode,
+                                           key=key
+        )
+    else:
+        raise ValueError("Undefined 'StreamlitInputs' value")
+    return input_value
+
+# Not used in the current version
 #def filter_function_args(func, args_dict):
 #    sig = signature(func)
 #    return {key: value for key, value in args_dict.items() if key in sig.parameters}

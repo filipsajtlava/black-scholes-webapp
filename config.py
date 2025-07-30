@@ -1,9 +1,5 @@
 from enum import Enum
 
-# ===========================
-# ==== 'Fixed' constants ====
-# ===========================
-
 class VariableKey(str, Enum): # define new variables / inputs through this it's more stable
     S = "Asset"
     K = "K"
@@ -14,6 +10,15 @@ class VariableKey(str, Enum): # define new variables / inputs through this it's 
     PATHS = "paths"
     STEPS = "steps"
     INTERVAL = "interval"
+
+class StreamlitInputs(str, Enum): # also important to add the new type of selectors
+    SLIDER = "slider"
+    NUMBER_INPUT = "number_input"
+    SEGMENTED_CONTROL = "segmented_control"
+
+# ===========================
+# ==== 'Fixed' constants ====
+# ===========================
 
 class OptionType(str, Enum):
     CALL = "Call"
@@ -69,10 +74,6 @@ class SegmentedControlConfig:
 # ==============================
 
 class AppSettings:
-
-    # ===================
-    # ==== Constants ====
-    # ===================
     
     CURRENCY = "€"
     MAX_GBM_LINES = 50
@@ -82,7 +83,7 @@ class AppSettings:
     # ==== Main input configs ====
     # ============================
 
-    FIX_INPUT_CONFIGS = {
+    STREAMLIT_INPUT_CONFIGS = {
         VariableKey.S.value: NumericSliderConfig(
             label=f"Asset price (S) in {CURRENCY}",
             min_value=1.0,
@@ -139,14 +140,12 @@ class AppSettings:
         default=OptionType.CALL.value,
         selection_mode="single",
         variable=VariableKey.OPTION_TYPE.value
-        )
-    }
+        ),
 
     # =============================
     # ==== Monte Carlo configs ====
-    # =============================
+    # =============================        
 
-    MC_INPUT_CONFIGS = {
         VariableKey.PATHS.value: NumericSliderConfig(
             label="Number of different paths",
             min_value=1.0,
@@ -165,21 +164,12 @@ class AppSettings:
             step=10.0,
             variable=VariableKey.STEPS.value,
             input_type="number_input"
-        )
-    }
+        ),
 
-    @classmethod
-    def get_variables_by_type(cls, input_type):
-        return [
-            input_config.variable for input_config in cls.FIX_INPUT_CONFIGS.values()
-            if input_config.type == input_type
-        ]
-    
     # =============================
     # ==== Candlestick configs ====
     # =============================
 
-    CANDLESTICK_CONFIGS = {
         VariableKey.INTERVAL.value: SegmentedControlConfig(
             label="Select time interval",
             options=[interval.value for interval in CandlestickInterval],
@@ -188,6 +178,13 @@ class AppSettings:
             variable=VariableKey.INTERVAL.value
             )
     }
+
+    @classmethod
+    def get_variables_by_type(cls, input_type):
+        return [
+            input_config.variable for input_config in cls.STREAMLIT_INPUT_CONFIGS.values()
+            if input_config.type == input_type
+        ]
 
 class Colors:
 

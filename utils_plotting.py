@@ -1,4 +1,3 @@
-# THESE ARE PLOTTING UTILS
 def create_axes(figure):
 
     # x-axis
