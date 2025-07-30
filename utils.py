@@ -1,6 +1,6 @@
 import numpy as np
 import streamlit as st
-from inspect import signature
+#from inspect import signature
 
 def get_seed(seed_interval):
     rng = np.random.default_rng()
@@ -33,7 +33,8 @@ def uniform_columns(non_empty_column_sizes, empty_padding_size = 0.25):
 
     return st.columns(column_sizes)
 
-def filter_function_args(func, args_dict):
-    sig = signature(func)
-    return {key: value for key, value in args_dict.items() if key in sig.parameters}
+# Not really used in the current version
+#def filter_function_args(func, args_dict):
+#    sig = signature(func)
+#    return {key: value for key, value in args_dict.items() if key in sig.parameters}
 

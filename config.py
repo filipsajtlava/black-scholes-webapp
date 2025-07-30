@@ -5,7 +5,7 @@ from enum import Enum
 # ===========================
 
 class VariableKey(str, Enum): # define new variables / inputs through this it's more stable
-    S = "S"
+    S = "Asset"
     K = "K"
     T = "T"
     R = "r"
@@ -83,7 +83,7 @@ class AppSettings:
     # ============================
 
     FIX_INPUT_CONFIGS = {
-        "S": NumericSliderConfig(
+        VariableKey.S.value: NumericSliderConfig(
             label=f"Asset price (S) in {CURRENCY}",
             min_value=1.0,
             max_value=250.0,
@@ -93,7 +93,7 @@ class AppSettings:
             input_type="slider"
         ),
 
-        "K": NumericSliderConfig(
+        VariableKey.K.value: NumericSliderConfig(
             label=f"Strike price (K) in {CURRENCY}",
             min_value=1.0,
             max_value=250.0,
@@ -103,7 +103,7 @@ class AppSettings:
             input_type="slider"
         ),
 
-        "T": NumericSliderConfig(
+        VariableKey.T.value: NumericSliderConfig(
             label="Time to maturity (T) in years",
             min_value=0.0,
             max_value=5.0,
@@ -113,7 +113,7 @@ class AppSettings:
             input_type="number_input"
         ),
 
-        "r": NumericSliderConfig(
+        VariableKey.R.value: NumericSliderConfig(
             label="Non-risk interest rate (r)",
             min_value=0.01,
             max_value=0.3,
@@ -123,7 +123,7 @@ class AppSettings:
             input_type="number_input"
         ),
 
-        "sigma": NumericSliderConfig(
+        VariableKey.SIGMA.value: NumericSliderConfig(
             label="Volatility (σ)",
             min_value=0.01,
             max_value=1.0,
@@ -133,8 +133,8 @@ class AppSettings:
             input_type="number_input"
         ),
         
-        "option_type": SegmentedControlConfig(
-        label="Option_type",
+        VariableKey.OPTION_TYPE.value: SegmentedControlConfig(
+        label="Option type",
         options=[OptionType.CALL.value, OptionType.PUT.value],
         default=OptionType.CALL.value,
         selection_mode="single",
@@ -147,7 +147,7 @@ class AppSettings:
     # =============================
 
     MC_INPUT_CONFIGS = {
-        "paths": NumericSliderConfig(
+        VariableKey.PATHS.value: NumericSliderConfig(
             label="Number of different paths",
             min_value=1.0,
             max_value=100000.0,
@@ -157,7 +157,7 @@ class AppSettings:
             input_type="number_input"
         ),
 
-        "steps": NumericSliderConfig(
+        VariableKey.STEPS.value: NumericSliderConfig(
             label="Number of steps in a path",
             min_value=10.0,
             max_value=500.0,
@@ -180,7 +180,7 @@ class AppSettings:
     # =============================
 
     CANDLESTICK_CONFIGS = {
-        "interval": SegmentedControlConfig(
+        VariableKey.INTERVAL.value: SegmentedControlConfig(
             label="Select time interval",
             options=[interval.value for interval in CandlestickInterval],
             default=CandlestickInterval.DAY.value,

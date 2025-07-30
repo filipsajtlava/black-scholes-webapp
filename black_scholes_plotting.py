@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import numpy as np
 from black_scholes import black_scholes_price, compute_greeks
 from utils_plotting import create_axes, dashed_line
-from config import OptionType
+from config import OptionType, VariableKey
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
     
@@ -141,10 +141,18 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         showlegend=False
     ))
 
-def plot_payoffs(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_strike_value,
-                 modelled_price, color_config, color_toggle = False, bs_function_toggle = False):    
+def plot_payoffs(selected_parameters, modelled_price, config, 
+                 color_config, color_toggle = False, bs_function_toggle = False):    
+    try:
+        S = selected_parameters[VariableKey.S.value]
+        K = selected_parameters[VariableKey.K.value]
+        option_type = selected_parameters[VariableKey.OPTION_TYPE.value]
+    except KeyError as error:
+        raise ValueError(f"Missing variable in the list: {error}")  
 
-    fixed_input_max = max(maximum_stock_value, maximum_strike_value)
+    fixed_input_max = max(config.FIX_INPUT_CONFIGS[VariableKey.S.value].max, 
+                          config.FIX_INPUT_CONFIGS[VariableKey.K.value].max
+                          )
     variable_input_max = max(S, K)
 
     # x-axis 10-times the original size for the infinite profit possibility for Call options with S(t) -> +inf
@@ -179,7 +187,7 @@ def plot_payoffs(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_st
     dashed_line(fig, [K], [-max(x_prices), max(x_prices)])
     dashed_line(fig, [K + (modelled_price if option_type == OptionType.CALL.value else -modelled_price)], [-max(x_prices), max(x_prices)])
 
-    if option_type == "Put":
+    if option_type == OptionType.PUT.value:
         dashed_line(fig, [0, K], [-modelled_price], opacity=0.1)
 
     # The final graph will be "zoomed" on the important parts based on their size and location
@@ -219,8 +227,9 @@ def plot_payoffs(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_st
     fig.update_yaxes(range = y_axis_output_visual)
 
     if bs_function_toggle:
-
-        black_scholes_function = black_scholes_price(x_prices, K, T, r, sigma, option_type)
+        selected_parameters = selected_parameters.copy()
+        selected_parameters[VariableKey.S.value] = x_prices
+        black_scholes_function = black_scholes_price(selected_parameters)
 
         fig.add_trace(go.Scatter(
             x = x_prices,
@@ -232,15 +241,15 @@ def plot_payoffs(S, K, T, r, sigma, option_type, maximum_stock_value, maximum_st
 
     return fig
 
-def create_greek_graph(input_parameters, x_var_config, greek_to_plot, color_config):
-    input_parameters = input_parameters.copy()
+def create_greek_graph(selected_parameters, x_var_config, greek_to_plot, color_config):
+    selected_parameters = selected_parameters.copy()
 
     x_values = np.linspace(x_var_config.min, x_var_config.max, 5000)
     x_var = x_var_config.variable
-    chosen_variable_value = input_parameters[x_var]
-    input_parameters[x_var] = x_values
+    chosen_variable_value = selected_parameters[x_var]
+    selected_parameters[x_var] = x_values
 
-    y_values = compute_greeks(**input_parameters, greek_returned=greek_to_plot)
+    y_values = compute_greeks(selected_parameters, greek_returned=greek_to_plot)
 
     fig = go.Figure()
     create_axes(fig)

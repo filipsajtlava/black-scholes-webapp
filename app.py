@@ -5,7 +5,7 @@ from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns, filter_function_args
+from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns
 from config import AppSettings, Colors, Greeks, VariableKey
 from candlestick_plotting import plot_candlestick_asset
 
@@ -76,7 +76,7 @@ def render_output_price_bubble(option_type, modelled_price, config, color_config
                      )
 
 def create_greek_table(inputs):
-    greeks = pd.DataFrame(compute_greeks(**inputs), index = [0])
+    greeks = pd.DataFrame(compute_greeks(inputs), index = [0])
     greeks.index = ["Values"]
     st.table(greeks.transpose())
     return greeks
@@ -99,7 +99,7 @@ def stage_bs_subtab(input_parameters, config, color_config):
 
     with plot_column:
 
-        price_bs = black_scholes_price(**input_parameters)
+        price_bs = black_scholes_price(input_parameters)
         st.caption("Black-Scholes option price")
         render_output_price_bubble(option_type=input_parameters[VariableKey.OPTION_TYPE.value], 
                                    modelled_price=price_bs,
@@ -116,10 +116,9 @@ def stage_bs_subtab(input_parameters, config, color_config):
         with right_toggle:
             bs_function_toggle = st.toggle("Toggle Black-Scholes price function", value=True)
 
-        main_bs_plot = plot_payoffs(**input_parameters,
-                                    maximum_stock_value=config.FIX_INPUT_CONFIGS[VariableKey.S.value].max,
-                                    maximum_strike_value=config.FIX_INPUT_CONFIGS[VariableKey.K.value].max,
+        main_bs_plot = plot_payoffs(input_parameters,
                                     modelled_price=price_bs,
+                                    config=config,
                                     color_config=color_config,
                                     color_toggle=color_toggle,
                                     bs_function_toggle=bs_function_toggle
@@ -135,9 +134,9 @@ def stage_bs_subtab(input_parameters, config, color_config):
         st.write("Greeks calculation")
 
         create_greek_table(input_parameters)
-        selected_greek, selected_variable = render_bs_graph_toggles(config = config)
+        selected_greek, selected_variable = render_bs_graph_toggles(config=config)
 
-        mini_greeks_plot = create_greek_graph(input_parameters=input_parameters,
+        mini_greeks_plot = create_greek_graph(selected_parameters=input_parameters,
                                               x_var_config=config.FIX_INPUT_CONFIGS[selected_variable],
                                               greek_to_plot=selected_greek,
                                               color_config=color_config
@@ -174,18 +173,31 @@ def render_ci_plot(modelled_price_mc, confidence_interval, option_type, containe
             unsafe_allow_html=True
         )
 
-def render_mc_input(variable_input, config):
-    input = st.number_input(label=config.MC_INPUT_CONFIGS[variable_input].label, 
-                            min_value=config.MC_INPUT_CONFIGS[variable_input].min,
-                            value=config.MC_INPUT_CONFIGS[variable_input].default, 
-                            max_value=config.MC_INPUT_CONFIGS[variable_input].max,
-                            step=config.MC_INPUT_CONFIGS[variable_input].step,
-                            format="%2f"
-                            )
-    return input
+def render_mc_input(config):
+
+    paths_key = VariableKey.PATHS.value
+    steps_key = VariableKey.STEPS.value
+
+    (_, input_left, _, input_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
+    with input_left:
+        num_paths = st.number_input(label=config.MC_INPUT_CONFIGS[paths_key].label, 
+                                    min_value=config.MC_INPUT_CONFIGS[paths_key].min,
+                                    value=config.MC_INPUT_CONFIGS[paths_key].default, 
+                                    max_value=config.MC_INPUT_CONFIGS[paths_key].max,
+                                    step=config.MC_INPUT_CONFIGS[paths_key].step,
+                                    format="%2f"
+                                    )
+    with input_right:
+        num_steps = st.number_input(label=config.MC_INPUT_CONFIGS[steps_key].label, 
+                                    min_value=config.MC_INPUT_CONFIGS[steps_key].min,
+                                    value=config.MC_INPUT_CONFIGS[steps_key].default, 
+                                    max_value=config.MC_INPUT_CONFIGS[steps_key].max,
+                                    step=config.MC_INPUT_CONFIGS[steps_key].step,
+                                    format="%2f"
+                                    )
+    return num_paths, num_steps
 
 def stage_mc_subtab(input_parameters, config, color_config):
-    
     (
         _,
         plot_column, 
@@ -206,30 +218,29 @@ def stage_mc_subtab(input_parameters, config, color_config):
         main_gbm_plot_container = st.empty()
         under_plot_caption_container = st.empty()
 
-        (_, input_left, _, input_right, _) = st.columns([0.25, 1.5, 0.1, 1.5, 0.25])
-        with input_left:
-            num_paths = render_mc_input(variable_input=VariableKey.PATHS.value, config=config)
-        with input_right:
-            num_steps = render_mc_input(variable_input=VariableKey.STEPS.value, config=config)
+        num_paths, num_steps = render_mc_input(config=config)
 
         input_parameters = input_parameters.copy()
         input_parameters.update({VariableKey.PATHS.value: num_paths, VariableKey.STEPS.value: num_steps})
 
-        gbm_args = filter_function_args(simulate_gbm_paths, input_parameters)
-        geom_brown_motion_mat = simulate_gbm_paths(**gbm_args, seed=seed)
-        mc_args = filter_function_args(monte_carlo_estimate, input_parameters)
-        modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat, **mc_args)
+        # Modelling
+        geom_brown_motion_mat = simulate_gbm_paths(selected_parameters=input_parameters,
+                                                   seed=seed
+                                                   )
+        modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat,
+                                                                      selected_parameters=input_parameters
+                                                                      )
 
         with modelled_price_container:
-            render_output_price_bubble(option_type=input_parameters["option_type"], 
+            render_output_price_bubble(option_type=input_parameters[VariableKey.OPTION_TYPE.value], 
                                        modelled_price=modelled_price_mc,
                                        config=config,
                                        color_config=color_config
                                        )
 
         gbm_plot, end_points_plot = plot_gbm_paths(S_paths=geom_brown_motion_mat,
-                                                   T=input_parameters["T"],
-                                                   r=input_parameters["r"],
+                                                   T=input_parameters[VariableKey.T.value],
+                                                   r=input_parameters[VariableKey.R.value],
                                                    seed=seed,
                                                    config=config
                                                    )
@@ -240,7 +251,7 @@ def stage_mc_subtab(input_parameters, config, color_config):
             config={"displayModeBar": False}
         )
 
-        if input_parameters["num_paths"] > config.MAX_GBM_LINES:
+        if input_parameters[VariableKey.PATHS.value] > config.MAX_GBM_LINES:
             under_plot_caption_container.caption(
                 f"Due to performance concerns this plot only shows {config.MAX_GBM_LINES} randomly chosen paths."
             )
@@ -248,7 +259,7 @@ def stage_mc_subtab(input_parameters, config, color_config):
     with seed_endpoints_column:
         render_ci_plot(modelled_price_mc=modelled_price_mc,
                        confidence_interval=confidence_interval,
-                       option_type=input_parameters["option_type"],
+                       option_type=input_parameters[VariableKey.OPTION_TYPE.value],
                        container=confidence_interval_container
                        )
 
@@ -297,7 +308,8 @@ def stage_candlestick_tab(key_prefix, config, color_config):
         )
 
         plot_candlestick_asset(selected_ticker=selected_ticker,
-                               selected_interval=)
+                               selected_interval=None
+                               )
 
 
 if __name__ == "__main__":
@@ -305,7 +317,7 @@ if __name__ == "__main__":
     st.set_page_config(page_title="Option Pricing App", layout="wide")
     tab_1, tab_2, tab_3 = st.tabs(["Math", 
                                    "Option Pricing",
-                                   "Application of the option pricing"])
+                                   "Option Pricing in Practice"])
 
     with tab_1:
         pass
@@ -322,7 +334,13 @@ if __name__ == "__main__":
         with parameter_input_column:
             fixed_inputs = get_user_inputs(key_prefix="tab_2_1",
                                            config= AppSettings,
-                                           selected_inputs=["S", "K", "T", "r", "sigma", "option_type"]
+                                           selected_inputs=[VariableKey.S.value,
+                                                            VariableKey.K.value,
+                                                            VariableKey.T.value,
+                                                            VariableKey.R.value,
+                                                            VariableKey.SIGMA.value,
+                                                            VariableKey.OPTION_TYPE.value
+                                                            ]
                                            )
 
         with output_column:

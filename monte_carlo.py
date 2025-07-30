@@ -1,16 +1,21 @@
 import numpy as np
 import streamlit as st
 from scipy.stats import norm
-from config import OptionType
+from config import OptionType, VariableKey
 
 @st.cache_data
-def simulate_gbm_paths(S, T, r, sigma, paths, steps, seed):
+def simulate_gbm_paths(selected_parameters, seed):
+    try:
+        S = selected_parameters[VariableKey.S.value]
+        T = selected_parameters[VariableKey.T.value]
+        r = selected_parameters[VariableKey.R.value]
+        sigma = selected_parameters[VariableKey.SIGMA.value]
+        num_paths = selected_parameters[VariableKey.PATHS.value]
+        num_steps = selected_parameters[VariableKey.STEPS.value]
+    except KeyError as error:
+        raise ValueError(f"Missing variable in the list: {error}")  
     
     np.random.seed(seed)
-
-    # For clarity
-    num_paths = paths
-    num_steps = steps
 
     num_paths = int(num_paths)
     num_steps = int(num_steps)
@@ -26,7 +31,15 @@ def simulate_gbm_paths(S, T, r, sigma, paths, steps, seed):
     S_out = S * np.exp(log_S)
     return S_out
 
-def monte_carlo_estimate(S_paths, K, T, r, option_type, alpha = 0.05):
+def monte_carlo_estimate(S_paths, selected_parameters, alpha = 0.05):
+    try:
+        K = selected_parameters[VariableKey.K.value]
+        T = selected_parameters[VariableKey.T.value]
+        r = selected_parameters[VariableKey.R.value]
+        option_type = selected_parameters[VariableKey.OPTION_TYPE.value]
+    except KeyError as error:
+        raise ValueError(f"Missing variable in the list: {error}")  
+
     n_steps = S_paths.shape[1] - 1
 
     last_column = S_paths[:, n_steps]
