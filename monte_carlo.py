@@ -4,7 +4,7 @@ from scipy.stats import norm
 from config import OptionType, VariableKey
 
 @st.cache_data
-def simulate_gbm_paths(selected_parameters, seed):
+def simulate_gbm_paths(selected_parameters):
     try:
         S = selected_parameters[VariableKey.S.value]
         T = selected_parameters[VariableKey.T.value]
@@ -12,6 +12,7 @@ def simulate_gbm_paths(selected_parameters, seed):
         sigma = selected_parameters[VariableKey.SIGMA.value]
         num_paths = selected_parameters[VariableKey.PATHS.value]
         num_steps = selected_parameters[VariableKey.STEPS.value]
+        seed = selected_parameters["seed"]
     except KeyError as error:
         raise ValueError(f"Missing variable in the list: {error}")  
     

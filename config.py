@@ -1,15 +1,15 @@
 from enum import Enum
 
 class VariableKey(str, Enum): # define new variables / inputs through this it's more stable
-    S = "Asset"
+    S = "S"
     K = "K"
     T = "T"
     R = "r"
-    SIGMA = "sigma"
-    OPTION_TYPE = "option_type"
-    PATHS = "paths"
-    STEPS = "steps"
-    INTERVAL = "interval"
+    SIGMA = "Sigma"
+    OPTION_TYPE = "Option type"
+    PATHS = "Paths"
+    STEPS = "Steps"
+    INTERVAL = "Interval"
 
 class StreamlitInputs(str, Enum): # also important to add the new type of selectors
     SLIDER = "slider"
