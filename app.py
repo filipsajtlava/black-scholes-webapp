@@ -3,10 +3,11 @@ import pandas as pd
 from st_flexible_callout_elements import flexible_callout
 from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
+from stocks import get_possible_tickers, get_stock_data
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from utils import get_seed, upper_padding, remove_bottom_padding, uniform_columns, streamlit_input_ui
-from config import AppSettings, Colors, Greeks, VariableKey, StreamlitInputs
+from utils import *
+from config import AppSettings, Colors, Greeks, VariableKey, StreamlitInputs, OptionType
 from candlestick_plotting import plot_candlestick_asset
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):
@@ -127,7 +128,7 @@ def stage_bs_subtab(input_parameters, config, color_config):
 
 
 
-def cache_mc_results(input_parameters, config):
+def cache_mc_results(input_parameters, config, color_config):
     # Modelling
     geom_brown_motion_mat = simulate_gbm_paths(selected_parameters=input_parameters)
     modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat,
@@ -137,7 +138,8 @@ def cache_mc_results(input_parameters, config):
                                                T=input_parameters[VariableKey.T.value],
                                                r=input_parameters[VariableKey.R.value],
                                                seed=input_parameters["seed"],
-                                               config=config
+                                               config=config,
+                                               color_config=color_config
                                                )
 
     st.session_state["modelling_result"] = {
@@ -147,7 +149,7 @@ def cache_mc_results(input_parameters, config):
         "end_points_plot": end_points_plot
     }
 
-def refresh_mc_if_inputs_changed(input_parameters, fixed_seed_toggle, position_column, config):
+def refresh_mc_if_inputs_changed(input_parameters, fixed_seed_toggle, position_column, config, color_config):
 
     # initialize for the first time
     if "last_inputs" not in st.session_state:
@@ -175,16 +177,16 @@ def refresh_mc_if_inputs_changed(input_parameters, fixed_seed_toggle, position_c
     
     if st.session_state["last_inputs"] != input_parameters or st.session_state["last_seed"] != seed:
         input_parameters["seed"] = seed
-        cache_mc_results(input_parameters=input_parameters, config=config)
+        cache_mc_results(input_parameters=input_parameters, config=config, color_config=color_config)
     else:
         input_parameters["seed"] = seed
 
     st.session_state["last_seed"] = input_parameters.pop("seed")
     st.session_state["last_inputs"] = input_parameters
 
-def render_ci_plot(modelled_price_mc, confidence_interval, option_type, container):
+def render_ci_plot(modelled_price_mc, confidence_interval, option_type, container, color_config):
     if modelled_price_mc > 0:
-        CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, option_type)
+        CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, option_type, color_config)
         container.plotly_chart(CI_plot, 
                                use_container_width=True,
                                config={"displayModeBar": False}
@@ -205,8 +207,6 @@ def render_mc_input(config):
         num_steps = streamlit_input_ui(variable=VariableKey.STEPS.value, config=config)
     
     return num_paths, num_steps
-
-
 
 def stage_mc_subtab(input_parameters, config, color_config):
     (
@@ -243,7 +243,8 @@ def stage_mc_subtab(input_parameters, config, color_config):
     refresh_mc_if_inputs_changed(input_parameters=mc_parameters,
                                  fixed_seed_toggle=fixed_seed_toggle,
                                  position_column=seed_endpoints_column,
-                                 config=config
+                                 config=config,
+                                 color_config=color_config
                                  )
 
     modelling_result = st.session_state["modelling_result"]
@@ -274,7 +275,8 @@ def stage_mc_subtab(input_parameters, config, color_config):
         render_ci_plot(modelled_price_mc=modelled_price_mc,
                        confidence_interval=confidence_interval,
                        option_type=mc_parameters[VariableKey.OPTION_TYPE.value],
-                       container=confidence_interval_container
+                       container=confidence_interval_container,
+                       color_config=color_config
                        )
 
         end_points_container.plotly_chart(end_points_plot,
@@ -284,48 +286,85 @@ def stage_mc_subtab(input_parameters, config, color_config):
 
 
 
-def render_interval_input(config):
-    pass
+def render_change_bubble(df, container, color_config, font_size = 20, padding = 10):
+    try:
+        start_price = df.iloc[0]["Close"]
+        end_price = df.iloc[-1]["Close"]
+        relative_change = (end_price - start_price) / start_price
+    except:
+        raise ValueError("Please check your network connection")
+
+    if relative_change > 0:
+        option_type = OptionType.CALL.value
+        arrow = "▲"
+    else:
+        option_type = OptionType.PUT.value
+        arrow = "▼"
+
+    relative_change = round(abs(relative_change) * 100, 2)
+
+    flexible_callout(f"{arrow} {relative_change}%*",
+                     background_color=color_config.bubble_background_option_type(option_type),
+                     font_color=color_config.bubble_font_option_type(option_type),
+                     font_size=font_size,
+                     alignment="center",
+                     padding=padding,
+                     container=container
+                     )
 
 def stage_candlestick_tab(key_prefix, config, color_config):
     (
         _,
         main_plot_column,
+        _,
+        x,
         _
-    ) = uniform_columns(non_empty_column_sizes=[1], empty_padding_size=1)
+    ) = uniform_columns(non_empty_column_sizes=[2,3])
 
     with main_plot_column:
-        
-        selected_ticker = st.multiselect("Select asset to plot:",
-                                         ["AAPL", "MSFT", "TSLA", "GOOG", "AMZN", "NVDA"],
-                                         max_selections=1)
+        upper_padding(10)
+
+        (
+            _,
+            multiselect_column,
+            _,
+            change_column,
+            _
+        ) = uniform_columns(non_empty_column_sizes=[2,1.5], empty_padding_size=0.5)
+
+        with multiselect_column:
+            selected_ticker = st.multiselect("Select asset to plot:", get_possible_tickers(), max_selections=1)
+        with change_column:
+            upper_padding(22)
+            change_bubble_container = st.empty()
+
         main_plot_container = st.empty()
         (
             _,
             interval_input_column,
-            _,
-            stats_column,
             _
-        ) = uniform_columns(non_empty_column_sizes=[3,2], empty_padding_size=0.1)
+        ) = uniform_columns(non_empty_column_sizes=[1.7], empty_padding_size=1)
 
         with interval_input_column:
             segmented_control_interval_container = st.empty()
-        
-        with stats_column:
-            stats_container = st.empty()
-
-        selected_interval = streamlit_input_ui(variable=VariableKey.INTERVAL.value, 
-                                               config=config,
-                                               key=key_prefix,
-                                               container=segmented_control_interval_container
-                                               )
 
         if selected_ticker:
-            plot_candlestick_asset(selected_ticker=selected_ticker,
-                                   selected_interval=selected_interval,
-                                   config=config,
-                                   color_config=color_config
-                                   )
+            selected_interval = streamlit_input_ui(variable=VariableKey.INTERVAL.value, 
+                                                   config=config,
+                                                   key=key_prefix,
+                                                   container=segmented_control_interval_container
+                                                   )
+            
+            stock_data = get_stock_data(selected_ticker=selected_ticker, selected_interval=selected_interval, config=config)
+
+            candlestick_plot = plot_candlestick_asset(df=stock_data,
+                                                      selected_interval=selected_interval,
+                                                      color_config=color_config
+                                                      )
+            main_plot_container.plotly_chart(candlestick_plot)
+            render_change_bubble(df=stock_data, container=change_bubble_container, color_config=color_config)
+            st.caption(f"*Relative price change in the last {interval_to_text(selected_interval, config)}")
+            
 
 
 

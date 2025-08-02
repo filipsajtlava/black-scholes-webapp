@@ -67,6 +67,35 @@ def streamlit_input_ui(variable, config, key = None, container = None):
     else:
         raise ValueError("Undefined 'StreamlitInputs' value")
     return input_value
+ 
+def interval_to_text(interval, config):
+
+    period_string = config.MAX_PERIODS[interval]
+    """
+    inputs / interval_string (str) containing the selected interval for the candlestick bar (e.g. "30d")
+    outputs / (str) a human-readable string with number and full time unit name (e.g. "30 days")
+    """
+    num = int("".join(filter(str.isdigit, period_string)))
+    unit = "".join(filter(str.isalpha, period_string))
+
+    unit_map = {
+        "d": "day",
+        "mo": "month",
+        "y": "year"
+    }
+
+    try:
+        unit_text_output = unit_map[unit]
+    except:
+        raise ValueError("interval unit not defined!")
+
+    if num > 1:
+        unit_text_output += "s"
+    else:
+        num = ""
+
+    return f"{num} {unit_text_output}"
+
 
 # Not used in the current version
 #def filter_function_args(func, args_dict):

@@ -5,3 +5,4 @@ pandas
 plotly
 st-flexible-callout-elements
 yfinance
+lxml

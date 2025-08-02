@@ -1,10 +1,9 @@
 import numpy as np
 import plotly.graph_objects as go
 from scipy.stats import gaussian_kde
-from config import Colors
 from utils_plotting import dashed_line
 
-def kernel_density_vertical(fig, S_paths, T, randomized_selection, color_config = Colors):
+def kernel_density_vertical(fig, S_paths, T, randomized_selection, color_config):
     terminal_prices = S_paths[randomized_selection, -1]
     
     kde = gaussian_kde(terminal_prices)
@@ -23,7 +22,7 @@ def kernel_density_vertical(fig, S_paths, T, randomized_selection, color_config 
     fig.update_xaxes(range = [T - max(scaled_density) * 0.1, T + max(scaled_density) * 1.1])
 
 
-def plot_gbm_paths(S_paths, T, r, seed, config):
+def plot_gbm_paths(S_paths, T, r, seed, config, color_config):
 
     np.random.seed(seed)
 
@@ -85,13 +84,13 @@ def plot_gbm_paths(S_paths, T, r, seed, config):
         showlegend=False
     )
 
-    kernel_density_vertical(fig_end_points, S_paths, T, randomized_selection)
+    kernel_density_vertical(fig_end_points, S_paths, T, randomized_selection, color_config)
 
     dashed_line(fig_end_points, [T-10000, T+10000], [S_paths[0][0] * np.exp(T * r)])
 
     return fig, fig_end_points
 
-def plot_confidence_interval(modelled_price, confidence_interval, option_type, color_config = Colors):
+def plot_confidence_interval(modelled_price, confidence_interval, option_type, color_config):
 
     fig = go.Figure()
 
@@ -109,7 +108,7 @@ def plot_confidence_interval(modelled_price, confidence_interval, option_type, c
         mode="markers",
         hoverinfo="text",
         hovertext=f"{option_type} option price",
-        line=dict(color=color_config.bubble_font_option_type(option_type))
+        line=dict(color=color_config.option_type_red_green(option_type))
     ))
 
     fig.update_layout(

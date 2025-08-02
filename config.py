@@ -38,14 +38,6 @@ class CandlestickInterval(str, Enum):
     WEEK = "1wk"
     MONTH = "1mo"
 
-MAX_PERIODS = {
-    CandlestickInterval.MINUTE.value: "7d",
-    CandlestickInterval.HOUR.value: "60d",
-    CandlestickInterval.DAY.value: "max",
-    CandlestickInterval.WEEK.value: "max",
-    CandlestickInterval.MONTH.value: "max",
-}
-
 # =====================
 # ==== Definitions ====
 # =====================
@@ -78,6 +70,14 @@ class AppSettings:
     CURRENCY = "€"
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
+
+    MAX_PERIODS = { # if you add a new value that's not "d", "mo" or "y" make sure to update the 'interval_to_text()' function
+        CandlestickInterval.MINUTE.value: "1d", #"7d",
+        CandlestickInterval.HOUR.value: "7d",
+        CandlestickInterval.DAY.value: "3mo", #"max",
+        CandlestickInterval.WEEK.value: "5y",
+        CandlestickInterval.MONTH.value: "10y",
+    }
 
     # ============================
     # ==== Main input configs ====
@@ -173,7 +173,7 @@ class AppSettings:
         VariableKey.INTERVAL.value: SegmentedControlConfig(
             label="Select time interval",
             options=[interval.value for interval in CandlestickInterval],
-            default=CandlestickInterval.DAY.value,
+            default=CandlestickInterval.HOUR.value,
             selection_mode="single",
             variable=VariableKey.INTERVAL.value
             )
@@ -199,6 +199,9 @@ class Colors:
         OptionType.PUT.value: "#f9d3d1" #STREAMLIT SUCCESS, ERROR FONTS
     }
 
+    RED = "#E03C32"
+    GREEN = "#7BB662"
+
     @classmethod
     def bubble_background_option_type(cls, option_type):
         try:
@@ -212,3 +215,12 @@ class Colors:
             return cls.FONT_BUBBLES[option_type]
         except:
             raise ValueError(f"Option type must be '{OptionType.CALL.value}' or '{OptionType.PUT.value}'!") 
+        
+    @classmethod
+    def option_type_red_green(cls, option_type):
+        if option_type == OptionType.CALL.value:
+            return cls.GREEN
+        elif option_type == OptionType.PUT.value:
+            return cls.RED
+        else:
+            raise ValueError(f"Option type must be '{OptionType.CALL.value}' or '{OptionType.PUT.value}'!")
