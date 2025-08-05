@@ -28,4 +28,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run fetch_options.py
-        run: python -m supabase_updater.fetch_and_update.py
+        run: python -m supabase_updater.fetch_and_update
