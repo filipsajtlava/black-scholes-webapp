@@ -71,6 +71,8 @@ class AppSettings:
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
 
+    MODELLED_OPTIONS_EXPIRY_DAYS = 43 # 30 days + 13 days accounting for weekends and holidays (on average)
+
     MAX_PERIODS = { # if you add a new value that's not "d", "mo" or "y" make sure to update the 'interval_to_text()' function
         CandlestickInterval.MINUTE.value: "1d", #"7d",
         CandlestickInterval.HOUR.value: "7d",
@@ -105,7 +107,7 @@ class AppSettings:
         ),
 
         VariableKey.T.value: NumericSliderConfig(
-            label="Time to maturity (T) in years",
+            label="Time to maturity (T) in trading years",
             min_value=0.0,
             max_value=5.0,
             default=1.0,

@@ -6,3 +6,4 @@ plotly
 st-flexible-callout-elements
 yfinance
 lxml
+supabase

@@ -94,7 +94,7 @@ def interval_to_text(interval, config):
     else:
         num = ""
 
-    return f"{num} {unit_text_output}"
+    return f"{num} trading {unit_text_output}"
 
 
 # Not used in the current version

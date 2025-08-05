@@ -60,7 +60,6 @@ def plot_candlestick_asset(df, selected_interval, color_config):
         showlegend=False,
         xaxis=dict(
             tickformat="%Y-%m-%d\n%H:%M" if "m" in selected_interval else "%Y-%m-%d",
-            range=[df.index.min(), df.index.max()],
             tickangle=45,
             #rangeslider=dict(visible=False),
         ),

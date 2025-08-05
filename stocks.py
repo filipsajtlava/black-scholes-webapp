@@ -1,5 +1,6 @@
 import pandas as pd
 import yfinance as yf
+import streamlit as st
 
 def get_stock_data(selected_ticker, selected_interval, config):
     selected_ticker = selected_ticker[0]
@@ -11,8 +12,12 @@ def get_stock_data(selected_ticker, selected_interval, config):
     df = df.xs(selected_ticker, axis=1, level=1)
     return df
 
+@st.cache_data
 def get_possible_tickers():
+    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
     try:
-        return pd.read_html('https://en.wikipedia.org/wiki/List_of_S%26P_500_companies')[0].loc[:,"Symbol"]
+        df = pd.read_html(url)[0]
+        tickers = df["Symbol"].tolist()
+        return tickers
     except:
         raise ValueError("Error with tickers input list")
