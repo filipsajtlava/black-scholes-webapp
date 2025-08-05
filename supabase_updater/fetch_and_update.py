@@ -43,8 +43,15 @@ def fetch_option_data(yf_ticker, ticker, expiry):
         "last_price", "bid", "ask", "implied_volatility",
         "volume", "open_interest", "snapshot_date"
     ]]
-
     return df
+
+def upload_to_supabase(df, table_name="options_snapshot"):
+    records = df.to_dict(orient="records")
+    for i in range(0, len(records), 500):
+        chunk = records[i:i+500]
+        response = supabase.table(table_name).insert(chunk).execute()
+        if response.get("error"):
+            print("Error inserting chunk:", response["error"])
 
 if __name__ == "__main__":
     tickers = get_possible_sp500_tickers()
@@ -58,6 +65,11 @@ if __name__ == "__main__":
             df = fetch_option_data(yf_ticker, ticker, expiry)
             all_options_df = pd.concat([all_options_df, df], ignore_index=True)
 
+    if not all_options_df.empty:
+        upload_to_supabase(all_options_df)
+        print(f"Uploaded {len(all_options_df)} rows to Supabase.")
+    else:
+        print("No data to upload.")
 # basically what needs to be done is fetching call and put option data for the specific expiry and after that we need
 # to update the table in the database with the data (every xx:xx hours utilizing something from github - at like 24:00)
 
