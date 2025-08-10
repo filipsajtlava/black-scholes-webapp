@@ -1,6 +1,7 @@
 import numpy as np
 import streamlit as st
-from config import StreamlitInputs
+import pandas as pd
+from config import StreamlitInputs, Colors
 #from inspect import signature
 
 def get_seed(seed_interval):
@@ -72,8 +73,8 @@ def interval_to_text(interval, config):
 
     period_string = config.MAX_PERIODS[interval]
     """
-    inputs / interval_string (str) containing the selected interval for the candlestick bar (e.g. "30d")
-    outputs / (str) a human-readable string with number and full time unit name (e.g. "30 days")
+    Inputs: interval_string (str) containing the selected interval for the candlestick bar (e.g. "30d")
+    Outputs: (str) a human-readable string with number and full time unit name (e.g. "30 days")
     """
     num = int("".join(filter(str.isdigit, period_string)))
     unit = "".join(filter(str.isalpha, period_string))
@@ -95,6 +96,11 @@ def interval_to_text(interval, config):
         num = ""
 
     return f"{num} trading {unit_text_output}"
+
+def highlight_chosen_row(df, target_index, option_type):
+    styles = pd.DataFrame("", index=df.index, columns=df.columns)
+    styles.loc[target_index, :] = f"background-color: {Colors.bubble_background_option_type(option_type=option_type)}"
+    return styles
 
 
 # Not used in the current version

@@ -67,11 +67,12 @@ class SegmentedControlConfig:
 
 class AppSettings:
     
-    CURRENCY = "€"
+    CURRENCY = "$"
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
 
     MODELLED_OPTIONS_EXPIRY_DAYS = 43 # 30 days + 13 days accounting for weekends and holidays (on average)
+    MODELLED_OPTIONS_AMOUNT = 3 # on every side for the closest strike prices (hence in practice 2*n + 1)
 
     MAX_PERIODS = { # if you add a new value that's not "d", "mo" or "y" make sure to update the 'interval_to_text()' function
         CandlestickInterval.MINUTE.value: "1d", #"7d",
@@ -175,7 +176,7 @@ class AppSettings:
         VariableKey.INTERVAL.value: SegmentedControlConfig(
             label="Select time interval",
             options=[interval.value for interval in CandlestickInterval],
-            default=CandlestickInterval.HOUR.value,
+            default=CandlestickInterval.DAY.value,
             selection_mode="single",
             variable=VariableKey.INTERVAL.value
             )
@@ -203,6 +204,8 @@ class Colors:
 
     RED = "#E03C32"
     GREEN = "#7BB662"
+
+    OPTION_SELECTION = "#173928"
 
     @classmethod
     def bubble_background_option_type(cls, option_type):

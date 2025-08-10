@@ -3,7 +3,7 @@ import pandas as pd
 from st_flexible_callout_elements import flexible_callout
 from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
-from stocks import get_possible_tickers, get_stock_data
+from stocks_options import get_possible_sp500_tickers, get_stock_data, get_options_data
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
 from utils import *
@@ -48,7 +48,7 @@ def get_user_inputs(key_prefix, config, selected_inputs = None):
     return input_parameters
 
 def render_output_price_bubble(option_type, modelled_price, config, color_config, font_size = 20, padding = 10):
-    flexible_callout(f"{option_type} option price: {modelled_price:.2f}{config.CURRENCY}",
+    flexible_callout(f"{option_type} option price: {modelled_price:.2f} {config.CURRENCY}",
                      background_color=color_config.bubble_background_option_type(option_type),
                      font_color=color_config.bubble_font_option_type(option_type),
                      font_size=font_size,
@@ -312,61 +312,119 @@ def render_change_bubble(df, container, color_config, font_size = 20, padding = 
                      container=container
                      )
 
-def stage_candlestick_tab(key_prefix, config, color_config):
+def render_candlestick_plot(key_prefix, config, color_config):
+    upper_padding(10)
     (
         _,
-        main_plot_column,
+        multiselect_column,
         _,
-        x,
+        change_column,
         _
-    ) = uniform_columns(non_empty_column_sizes=[2,3])
+    ) = uniform_columns(non_empty_column_sizes=[2,1.5], empty_padding_size=0.5)
 
-    with main_plot_column:
-        upper_padding(10)
-
-        (
-            _,
-            multiselect_column,
-            _,
-            change_column,
-            _
-        ) = uniform_columns(non_empty_column_sizes=[2,1.5], empty_padding_size=0.5)
-
-        with multiselect_column:
-            selected_ticker = st.multiselect("Select asset to plot:", get_possible_tickers(), max_selections=1)
-        with change_column:
-            upper_padding(22)
-            change_bubble_container = st.empty()
-
-        main_plot_container = st.empty()
-        (
-            _,
-            interval_input_column,
-            _
-        ) = uniform_columns(non_empty_column_sizes=[1.7], empty_padding_size=1)
-
-        with interval_input_column:
-            segmented_control_interval_container = st.empty()
-
+    with multiselect_column:
+        selected_ticker = st.multiselect("Select asset to plot:", get_possible_sp500_tickers(), max_selections=1)
         if selected_ticker:
-            selected_interval = streamlit_input_ui(variable=VariableKey.INTERVAL.value, 
-                                                   config=config,
-                                                   key=key_prefix,
-                                                   container=segmented_control_interval_container
-                                                   )
-            
-            stock_data = get_stock_data(selected_ticker=selected_ticker, selected_interval=selected_interval, config=config)
+            selected_ticker = selected_ticker[0]
+    with change_column:
+        upper_padding(22)
+        change_bubble_container = st.empty()
 
-            candlestick_plot = plot_candlestick_asset(df=stock_data,
-                                                      selected_interval=selected_interval,
-                                                      color_config=color_config
-                                                      )
-            main_plot_container.plotly_chart(candlestick_plot)
-            render_change_bubble(df=stock_data, container=change_bubble_container, color_config=color_config)
-            st.caption(f"*Relative price change in the last {interval_to_text(selected_interval, config)}")
-            
+    main_plot_container = st.empty()
+    (
+        _,
+        interval_input_column,
+        _
+    ) = uniform_columns(non_empty_column_sizes=[1.7], empty_padding_size=1)
+
+    with interval_input_column:
+        segmented_control_interval_container = st.empty()
+
+    if selected_ticker:
+        selected_interval = streamlit_input_ui(variable=VariableKey.INTERVAL.value, 
+                                               config=config,
+                                               key=key_prefix,
+                                               container=segmented_control_interval_container
+                                               )
+        if selected_interval is None:
+            raise ValueError("Please select a valid time interval option")
+        
+        stock_data = get_stock_data(selected_ticker=selected_ticker, selected_interval=selected_interval, config=config)
+
+        candlestick_plot = plot_candlestick_asset(df=stock_data,
+                                                    selected_interval=selected_interval,
+                                                    color_config=color_config
+                                                    )
+        main_plot_container.plotly_chart(candlestick_plot)
+        render_change_bubble(df=stock_data, container=change_bubble_container, color_config=color_config)
+        st.caption(f"*Relative price change in the last {interval_to_text(selected_interval, config)}")
+        end_price = stock_data.iloc[-1]["Close"]
+
+    return selected_ticker, end_price if selected_ticker else None
+
+def render_option_selection_input(df):
+    selection = df.index
+    selected_option = st.selectbox("Select an option:", selection)
+    return selected_option
+
+def render_price_bubble(df, index, option_type, config, color_config, font_size = 20, padding = 10):
+    upper_padding(5)
+    price = (df.loc[index, "Bid"] + df.loc[index, "Ask"]) / 2
+    flexible_callout(f"{price:.2f} {config.CURRENCY}",
+                     background_color=color_config.bubble_background_option_type(option_type),
+                     font_color=color_config.bubble_font_option_type(option_type),
+                     font_size=font_size,
+                     alignment="center",
+                     padding=padding
+                     )
+
+def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, color_config):
+    if selected_ticker:
+        upper_padding(10)
+        title_container = st.empty()
+        table_container = st.empty()
+
+        (
+            _,
+            option_type_selection_column,
+            _,
+            option_selection_column,
+            _,
+            option_price_column,
+            _,
+        ) = uniform_columns(non_empty_column_sizes=[1, 1.5, 1], empty_padding_size=0.5)
+
+        with option_type_selection_column:
+            option_type = streamlit_input_ui(variable=VariableKey.OPTION_TYPE.value,
+                                             config=config,
+                                             key=key_prefix
+                                             )
+
+        options_data, closest_expiry = get_options_data(selected_ticker=selected_ticker, 
+                                        option_type=option_type, 
+                                        strike_price=strike_price, 
+                                        config=config
+                                        )
+        
+        with option_selection_column:
+            selected_option = render_option_selection_input(df=options_data)
+
+        with option_price_column:
+            render_price_bubble(df=options_data, 
+                                index=selected_option, 
+                                option_type=option_type,
+                                config=config, 
+                                color_config=color_config)
 
 
+        title_container.write(f"Option market prices (with expiry at {closest_expiry})")
+        options_data = options_data.style.apply(highlight_chosen_row, 
+                                                target_index=[selected_option], 
+                                                option_type=option_type, 
+                                                axis=None
+                                                )
+        table_container.dataframe(options_data)
+    
 
 if __name__ == "__main__":
 
@@ -408,7 +466,24 @@ if __name__ == "__main__":
                 stage_mc_subtab(fixed_inputs, config=AppSettings, color_config=Colors)
                 
     with tab_3:
-        stage_candlestick_tab(key_prefix="tab_3_1", config=AppSettings, color_config=Colors)
+        (
+            _,
+            candlestick_plot_column,
+            _,
+            modelling_data_column,
+            _
+        ) = uniform_columns(non_empty_column_sizes=[2,3])
+
+        with candlestick_plot_column:
+            selected_ticker, strike_price = render_candlestick_plot(key_prefix="tab_3_1", config=AppSettings, color_config=Colors)
+
+        with modelling_data_column:
+            stage_option_pricing(key_prefix="tab_3_2", 
+                                 config=AppSettings,
+                                 color_config=Colors, 
+                                 selected_ticker=selected_ticker,
+                                 strike_price=strike_price
+                                 )
 
     remove_bottom_padding()
 
