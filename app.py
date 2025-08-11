@@ -367,10 +367,10 @@ def render_option_selection_input(df):
     selected_option = st.selectbox("Select an option:", selection)
     return selected_option
 
-def render_price_bubble(df, index, option_type, config, color_config, font_size = 20, padding = 10):
+def render_price_bubble(df, index, option_type, config, color_config, font_size = 18, padding = 10):
     upper_padding(5)
     price = (df.loc[index, "Bid"] + df.loc[index, "Ask"]) / 2
-    flexible_callout(f"{price:.2f} {config.CURRENCY}",
+    flexible_callout(f"Price of the option: {price:.2f} {config.CURRENCY}",
                      background_color=color_config.bubble_background_option_type(option_type),
                      font_color=color_config.bubble_font_option_type(option_type),
                      font_size=font_size,
@@ -392,7 +392,7 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
             _,
             option_price_column,
             _,
-        ) = uniform_columns(non_empty_column_sizes=[1, 1.5, 1], empty_padding_size=0.5)
+        ) = uniform_columns(non_empty_column_sizes=[0.7, 1.5, 1.5], empty_padding_size=0.25)
 
         with option_type_selection_column:
             option_type = streamlit_input_ui(variable=VariableKey.OPTION_TYPE.value,
@@ -415,16 +415,17 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
                                 option_type=option_type,
                                 config=config, 
                                 color_config=color_config)
-
-
+            
         title_container.write(f"Option market prices (with expiry at {closest_expiry})")
-        options_data = options_data.style.apply(highlight_chosen_row, 
-                                                target_index=[selected_option], 
-                                                option_type=option_type, 
-                                                axis=None
-                                                )
-        table_container.dataframe(options_data)
-    
+        table_container.dataframe(options_data.style
+                                  .apply(highlight_chosen_row, target_index=[selected_option], option_type=option_type, axis=None)
+                                  .format({"Strike price (K)": "{:.2f}", 
+                                           "Bid": "{:.2f}", 
+                                           "Ask": "{:.2f}", 
+                                           "Volume": "{:.0f}", 
+                                           "Implied volatility (IV)": "{:.4f}"}
+                                           )
+                                  )
 
 if __name__ == "__main__":
 

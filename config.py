@@ -71,7 +71,7 @@ class AppSettings:
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
 
-    MODELLED_OPTIONS_EXPIRY_DAYS = 43 # 30 days + 13 days accounting for weekends and holidays (on average)
+    MODELLED_OPTIONS_EXPIRY_DAYS = 30
     MODELLED_OPTIONS_AMOUNT = 3 # on every side for the closest strike prices (hence in practice 2*n + 1)
 
     MAX_PERIODS = { # if you add a new value that's not "d", "mo" or "y" make sure to update the 'interval_to_text()' function
