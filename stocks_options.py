@@ -19,7 +19,6 @@ def get_possible_sp500_tickers():
     tickers = pd.read_html(url)[0]["Symbol"].str.replace(".", "-", regex=False).to_list()
     return tickers
 
-
 def get_closest_expiry(yf_ticker, config):
     """
     Inputs: yf_ticker (cls), config (cls)
