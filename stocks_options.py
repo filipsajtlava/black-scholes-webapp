@@ -41,7 +41,7 @@ def get_options_data(selected_ticker, option_type, strike_price, supabase_client
     else:
         raise ValueError("Please select one of the possible option types.")
     
-    closest_expiry = options_data["expiry"]
+    closest_expiry = options_data.loc[0,"expiry"]
 
     #closest_strike_index = abs(options_data["strike"] - strike_price).argmin()
     options_data = options_data.loc[:, 

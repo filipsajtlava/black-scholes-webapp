@@ -43,8 +43,7 @@ def fetch_option_data(yf_ticker, ticker, expiry):
         "volume", "impliedVolatility", "snapshot_date"
     ]]
 
-    df["volume"] = df["volume"].fillna(0).astype(int)
-    df["open_interest"] = df["open_interest"].fillna(0)
+    df["volume"] = df["volume"].fillna(0)
     df["bid"] = df["bid"].fillna(0)
     df["ask"] = df["ask"].fillna(0)
 
@@ -73,8 +72,7 @@ if __name__ == "__main__":
             expiry = get_closest_expiry(expirations)
             df = fetch_option_data(yf_ticker, ticker, expiry)
             all_options_df = pd.concat([all_options_df, df], ignore_index=True)
-            if ticker == "AAPL" and df["ask"].sum() == 0: 
-                print("holiday / weekend")
+            if ticker == "AAPL" and df["ask"].sum() == 0:
                 # hardcoded "AAPL" because of it's reliability, no options will ever cost 0 in total
                 # unless the data is corrupted - in that case, exit the entire upload process and wait for another day
                 raise SystemExit("Invalid prices detected - exiting the program (probable holiday or weekend)")
@@ -82,8 +80,8 @@ if __name__ == "__main__":
             print(f"Error processing {ticker}: {e}")
 
     print(f"\nTotal options rows collected: {len(all_options_df)}")
-    supabase.table("options_snapshot").delete().neq("ticker", "").execute()
     if not all_options_df.empty:
+        supabase.table("options_snapshot").delete().neq("ticker", "").execute()
         upload_to_supabase(all_options_df)
     else:
         print("No data to upload.")
