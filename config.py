@@ -229,3 +229,7 @@ class Colors:
             return cls.RED
         else:
             raise ValueError(f"Option type must be '{OptionType.CALL.value}' or '{OptionType.PUT.value}'!")
+        
+class Supabase:
+    SUPABASE_URL = "https://nzxumwoeufxllomkxwgj.supabase.co"
+    SUPABASE_READ_KEY = "sb_publishable_ajdh0KX9x2Mx3eenvLLiwg_DD-4vn8p"

@@ -5,6 +5,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from config import OptionType
 
+@st.cache_data
 def get_stock_data(selected_ticker, selected_interval, config):
     df = yf.download(selected_ticker,
                      interval=selected_interval,
@@ -14,10 +15,9 @@ def get_stock_data(selected_ticker, selected_interval, config):
     return df
 
 @st.cache_data
-def get_possible_sp500_tickers():
-    url = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
-    tickers = pd.read_html(url)[0]["Symbol"].str.replace(".", "-", regex=False).to_list()
-    return tickers
+def get_tickers(_supabase_client):
+    tickers = _supabase_client.rpc("get_unique_tickers").execute()
+    return tickers.data
 
 def get_closest_expiry(yf_ticker, config):
     """
@@ -32,27 +32,30 @@ def get_closest_expiry(yf_ticker, config):
     closest = expirations[closest_index].date()
     return closest
 
-def get_options_data(selected_ticker, option_type, strike_price, config):
-    yf_ticker = yf.Ticker(selected_ticker)
-    closest_expiry = get_closest_expiry(yf_ticker=yf_ticker, config=config)
-    chain = yf_ticker.option_chain(str(closest_expiry))
+def get_options_data(selected_ticker, option_type, strike_price, supabase_client):
+    options = supabase_client.rpc("get_options_by_ticker", {"ticker_text": selected_ticker}).execute()
+    options_data = pd.DataFrame(options.data)
 
-    if option_type == OptionType.CALL.value:
-        options_data = chain.calls
-    elif option_type == OptionType.PUT.value:
-        options_data = chain.puts
+    if option_type in (OptionType.CALL.value, OptionType.PUT.value):
+        options_data = options_data[options_data["option_type"] == option_type]
     else:
         raise ValueError("Please select one of the possible option types.")
+    
+    closest_expiry = options_data["expiry"]
 
-    closest_strike_index = abs(options_data["strike"] - strike_price).argmin()
-    options_data = options_data.loc[(closest_strike_index - config.MODELLED_OPTIONS_AMOUNT):(closest_strike_index + config.MODELLED_OPTIONS_AMOUNT), 
-                                    ["contractSymbol", "strike", "bid", "ask", "volume", "impliedVolatility"]
+    #closest_strike_index = abs(options_data["strike"] - strike_price).argmin()
+    options_data = options_data.loc[:, 
+                                    ["contractsymbol", "strike", "bid", "ask", "volume", "impliedvolatility"]
                                     ]
     options_data.columns = ["Contract symbol", "Strike price (K)", "Bid", "Ask", "Volume", "Implied volatility (IV)"]
     options_data = options_data.set_index("Contract symbol")
 
-    closest_expiry = closest_expiry.strftime("%d.%m.%Y")
+    #closest_expiry = closest_expiry.strftime("%d.%m.%Y")
     return options_data, closest_expiry
+
+# EXPIRATION DATE FIX
+
+# MAKE THE TABLE SMALLER?
 
 
     

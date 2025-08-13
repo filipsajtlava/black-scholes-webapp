@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 from st_flexible_callout_elements import flexible_callout
+from supabase import create_client
 from black_scholes import black_scholes_price, compute_greeks
 from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
-from stocks_options import get_possible_sp500_tickers, get_stock_data, get_options_data
+from stocks_options import get_stock_data, get_options_data, get_tickers
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
 from utils import *
-from config import AppSettings, Colors, Greeks, VariableKey, StreamlitInputs, OptionType
+from config import AppSettings, Colors, Supabase, Greeks, VariableKey, StreamlitInputs, OptionType
 from candlestick_plotting import plot_candlestick_asset
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):
@@ -312,7 +313,7 @@ def render_change_bubble(df, container, color_config, font_size = 20, padding = 
                      container=container
                      )
 
-def render_candlestick_plot(key_prefix, config, color_config):
+def render_candlestick_plot(key_prefix, config, color_config, supabase_client):
     upper_padding(10)
     (
         _,
@@ -321,9 +322,10 @@ def render_candlestick_plot(key_prefix, config, color_config):
         change_column,
         _
     ) = uniform_columns(non_empty_column_sizes=[2,1.5], empty_padding_size=0.5)
+    tickers = get_tickers(_supabase_client=supabase)
 
     with multiselect_column:
-        selected_ticker = st.multiselect("Select asset to plot:", get_possible_sp500_tickers(), max_selections=1)
+        selected_ticker = st.multiselect("Select asset to plot:", tickers, max_selections=1)
         if selected_ticker:
             selected_ticker = selected_ticker[0]
     with change_column:
@@ -378,7 +380,7 @@ def render_price_bubble(df, index, option_type, config, color_config, font_size 
                      padding=padding
                      )
 
-def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, color_config):
+def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, color_config, supabase_client):
     if selected_ticker:
         upper_padding(10)
         title_container = st.empty()
@@ -402,8 +404,8 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
 
         options_data, closest_expiry = get_options_data(selected_ticker=selected_ticker, 
                                         option_type=option_type, 
-                                        strike_price=strike_price, 
-                                        config=config
+                                        strike_price=strike_price,
+                                        supabase_client=supabase_client
                                         )
         
         with option_selection_column:
@@ -428,6 +430,7 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
                                   )
 
 if __name__ == "__main__":
+    supabase = create_client(Supabase.SUPABASE_URL, Supabase.SUPABASE_READ_KEY)
 
     st.set_page_config(page_title="Option Pricing App", layout="wide")
     tab_1, tab_2, tab_3 = st.tabs(["Math", "Option Pricing", "Option Pricing in Practice"])
@@ -476,14 +479,18 @@ if __name__ == "__main__":
         ) = uniform_columns(non_empty_column_sizes=[2,3])
 
         with candlestick_plot_column:
-            selected_ticker, strike_price = render_candlestick_plot(key_prefix="tab_3_1", config=AppSettings, color_config=Colors)
+            selected_ticker, strike_price = render_candlestick_plot(key_prefix="tab_3_1", 
+                                                                    config=AppSettings, 
+                                                                    color_config=Colors,
+                                                                    supabase_client=supabase)
 
         with modelling_data_column:
             stage_option_pricing(key_prefix="tab_3_2", 
                                  config=AppSettings,
                                  color_config=Colors, 
                                  selected_ticker=selected_ticker,
-                                 strike_price=strike_price
+                                 strike_price=strike_price,
+                                 supabase_client=supabase
                                  )
 
     remove_bottom_padding()
