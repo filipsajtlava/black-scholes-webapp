@@ -39,11 +39,11 @@ def get_user_inputs(key_prefix, config, selected_inputs = None):
         for var in number_input_vars:
             input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
 
-        (_, option_type_column, _) = uniform_columns(non_empty_column_sizes=[2.65], empty_padding_size=1)
+    (_, option_type_column) = st.columns([1.25, 2])
 
-        with option_type_column: 
-            for var in segmented_control_vars:
-                input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
+    with option_type_column: 
+        for var in segmented_control_vars:
+            input_parameters[var] = streamlit_input_ui(variable=var, key=key_prefix, config=config)
 
     return input_parameters
 
@@ -340,11 +340,7 @@ def render_candlestick_plot(key_prefix, config, color_config, supabase_client):
         change_bubble_container = st.empty()
 
     main_plot_container = st.empty()
-    (
-        _,
-        interval_input_column,
-        _
-    ) = uniform_columns(non_empty_column_sizes=[1.7], empty_padding_size=1)
+    (_, interval_input_column) = st.columns([1.25, 3])
 
     with interval_input_column:
         segmented_control_interval_container = st.empty()
@@ -442,7 +438,7 @@ def stage_option_pricing(key_prefix, selected_ticker, config, color_config, supa
             _,
             option_price_column,
             _,
-        ) = uniform_columns(non_empty_column_sizes=[0.7, 1.5, 1.5], empty_padding_size=0.25)
+        ) = uniform_columns(non_empty_column_sizes=[0.75, 1.5, 1.5], empty_padding_size=0.25)
 
         raw_options_data = get_data_from_supabase(supabase_client=supabase_client, selected_ticker=selected_ticker)
         
