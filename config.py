@@ -5,16 +5,18 @@ class VariableKey(str, Enum): # define new variables / inputs through this it's 
     K = "K"
     T = "T"
     R = "r"
-    SIGMA = "Sigma"
-    OPTION_TYPE = "Option type"
-    PATHS = "Paths"
-    STEPS = "Steps"
-    INTERVAL = "Interval"
+    SIGMA = "sigma"
+    OPTION_TYPE = "option_type"
+    PATHS = "paths"
+    STEPS = "steps"
+    INTERVAL = "interval"
 
 class StreamlitInputs(str, Enum): # also important to add the new type of selectors
     SLIDER = "slider"
     NUMBER_INPUT = "number_input"
     SEGMENTED_CONTROL = "segmented_control"
+
+TRADING_YEAR_DAYS = 252
 
 # ===========================
 # ==== 'Fixed' constants ====
@@ -71,13 +73,15 @@ class AppSettings:
     MAX_GBM_LINES = 50
     SEED_INTERVAL = [1, 10000]
 
-    MODELLED_OPTIONS_EXPIRY_DAYS = 30
-    MODELLED_OPTIONS_AMOUNT = 3 # on every side for the closest strike prices (hence in practice 2*n + 1)
+    MODELLED_OPTIONS_EXPIRY_DAYS = 30 # fetch option data that is closest to 30 days expiry from now
+    HV_PERIOD = "1mo" # choose how far back does the data for historical volatility calculation date
+    # best to choose a similar timeframe to MODELLED_OPTIONS_EXPIRY_DAYS above
+    HV_INTERVAL = "1d"
 
     MAX_PERIODS = { # if you add a new value that's not "d", "mo" or "y" make sure to update the 'interval_to_text()' function
-        CandlestickInterval.MINUTE.value: "1d", #"7d",
+        CandlestickInterval.MINUTE.value: "1d", # "7d",
         CandlestickInterval.HOUR.value: "7d",
-        CandlestickInterval.DAY.value: "3mo", #"max",
+        CandlestickInterval.DAY.value: "3mo", # "max",
         CandlestickInterval.WEEK.value: "5y",
         CandlestickInterval.MONTH.value: "10y",
     }
@@ -193,6 +197,9 @@ class Colors:
 
     PAYOFF_AREAS = ["#E03C32", "#FFD301", "#7BB662"]
     SEAMLESS_GREY = "#595A70"
+    DARK_GREY = "#262730"
+    WHITE = "#F8F8FF"
+    
     BACKGROUND_BUBBLES = {
         OptionType.CALL.value: "#173928",
         OptionType.PUT.value: "#3e2428" #STREAMLIT SUCCESS, ERROR BUBBLES

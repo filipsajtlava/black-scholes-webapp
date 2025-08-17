@@ -122,7 +122,7 @@ def plot_confidence_interval(modelled_price, confidence_interval, option_type, c
         visible=False
     )
 
-    x_axis_values = [confidence_interval[0], modelled_price, confidence_interval[1]]
+    x_axis_values = [confidence_interval[0], round(modelled_price, 2), confidence_interval[1]]
     buffer = (max(x_axis_values) - min(x_axis_values)) * 0.15
 
     fig.update_xaxes(tickmode="array",

@@ -1,6 +1,6 @@
 import plotly.graph_objects as go
 import numpy as np
-from black_scholes import black_scholes_price, compute_greeks
+from option_pricing import EuropeanOption
 from utils_plotting import create_axes, dashed_line
 from config import OptionType, VariableKey
 
@@ -117,7 +117,7 @@ def profit_loss_areas(K, modelled_price, option_type, fig, max_x, arbitrary_high
             layer="below"
         )
 
-def hover_tooltips(K, modelled_price, option_type, fig, annotations):
+def hover_tooltips(K, modelled_price, option_type, fig, annotations, config):
 
     x_hover = []
     y_hover = []
@@ -133,10 +133,10 @@ def hover_tooltips(K, modelled_price, option_type, fig, annotations):
         marker=dict(size=10, color="rgba(0,0,0,0)"),  # invisible
         hoverinfo="text",
         hovertext=[
-            f"Option price: {modelled_price:.2f}€",
-            f"Strike price: {K:.2f}€",
-            f"Break-even: {K + modelled_price:.2f}€" if option_type == OptionType.CALL.value
-            else f"Break-even: {K - modelled_price:.2f}€"
+            f"Option price: {modelled_price:.2f} {config.CURRENCY}",
+            f"Strike price: {K:.2f} {config.CURRENCY}",
+            f"Break-even: {K + modelled_price:.2f} {config.CURRENCY}" if option_type == OptionType.CALL.value
+            else f"Break-even: {K - modelled_price:.2f} {config.CURRENCY}"
         ],
         showlegend=False
     ))
@@ -217,7 +217,7 @@ def plot_payoffs(selected_parameters, modelled_price, config,
             font = dict(size = 14)
         )
 
-    hover_tooltips(K, modelled_price, option_type, fig, annotations)
+    hover_tooltips(K, modelled_price, option_type, fig, annotations, config)
 
     if color_toggle:
         profit_loss_areas(K, modelled_price, option_type, fig, max(x_prices), max(x_prices), color_config)
@@ -229,11 +229,11 @@ def plot_payoffs(selected_parameters, modelled_price, config,
     if bs_function_toggle:
         selected_parameters = selected_parameters.copy()
         selected_parameters[VariableKey.S.value] = x_prices
-        black_scholes_function = black_scholes_price(selected_parameters)
+        black_scholes_values = EuropeanOption(**selected_parameters).bs_price()
 
         fig.add_trace(go.Scatter(
             x = x_prices,
-            y = black_scholes_function - modelled_price,
+            y = black_scholes_values - modelled_price,
             mode = "lines",
             hoverinfo="skip",
             showlegend=False
@@ -241,15 +241,14 @@ def plot_payoffs(selected_parameters, modelled_price, config,
 
     return fig
 
-def create_greek_graph(selected_parameters, x_var_config, greek_to_plot, color_config):
-    selected_parameters = selected_parameters.copy()
-
-    x_values = np.linspace(x_var_config.min, x_var_config.max, 5000)
-    x_var = x_var_config.variable
-    chosen_variable_value = selected_parameters[x_var]
-    selected_parameters[x_var] = x_values
-
-    y_values = compute_greeks(selected_parameters, greek_returned=greek_to_plot)
+def create_greek_graph(input_parameters, selected_variable, greek_to_plot, config, color_config):
+    input_parameters = input_parameters.copy()
+    x_values = np.linspace(config.STREAMLIT_INPUT_CONFIGS[selected_variable].min, 
+                           config.STREAMLIT_INPUT_CONFIGS[selected_variable].max, 5000
+                           )
+    current_value = input_parameters[selected_variable]
+    input_parameters[selected_variable] = x_values
+    y_values = EuropeanOption(**input_parameters).bs_greeks(greek_to_return=greek_to_plot)
 
     fig = go.Figure()
     create_axes(fig)
@@ -263,7 +262,7 @@ def create_greek_graph(selected_parameters, x_var_config, greek_to_plot, color_c
     ))
 
     fig.update_layout(
-        xaxis_title = f"Variable {x_var}",
+        xaxis_title = f"Variable {selected_variable}",
         height = 210,
         width = 200,
         title = f"Behaviour of {greek_to_plot}"
@@ -273,7 +272,7 @@ def create_greek_graph(selected_parameters, x_var_config, greek_to_plot, color_c
     y_range_size_rel = (y_range[1] - y_range[0]) * 0.1
     fig.update_yaxes(range=[y_range[0] - y_range_size_rel, y_range[1] + y_range_size_rel])
 
-    dashed_line(fig, [chosen_variable_value], [-10, 10])
+    dashed_line(fig, [current_value], [-10, 10])
 
     fig.update_layout(margin=dict(t=30, b=20, l=0, r=0))
 

@@ -2,8 +2,8 @@ import pandas as pd
 import yfinance as yf
 import streamlit as st
 import numpy as np
-from datetime import datetime, timedelta
-from config import OptionType
+from datetime import datetime
+from config import OptionType, TRADING_YEAR_DAYS
 
 @st.cache_data
 def get_stock_data(selected_ticker, selected_interval, config):
@@ -19,43 +19,48 @@ def get_tickers(_supabase_client):
     tickers = _supabase_client.rpc("get_unique_tickers").execute()
     return tickers.data
 
-def get_closest_expiry(yf_ticker, config):
-    """
-    Inputs: yf_ticker (cls), config (cls)
-    Outputs: (datetime) closest expiration date of actual options to the selected amount of days
-    """
-    expirations = pd.to_datetime(yf_ticker.options)
-    days_to_expiry = config.MODELLED_OPTIONS_EXPIRY_DAYS
-
-    target_date = pd.to_datetime(datetime.now() + timedelta(days=days_to_expiry))
-    closest_index = np.abs((expirations - target_date).total_seconds().to_numpy()).argmin()
-    closest = expirations[closest_index].date()
-    return closest
-
-def get_options_data(selected_ticker, option_type, strike_price, supabase_client):
+def get_data_from_supabase(supabase_client, selected_ticker):
     options = supabase_client.rpc("get_options_by_ticker", {"ticker_text": selected_ticker}).execute()
     options_data = pd.DataFrame(options.data)
+    return options_data
 
+def get_specific_data(df, option_type):
     if option_type in (OptionType.CALL.value, OptionType.PUT.value):
-        options_data = options_data[options_data["option_type"] == option_type]
+        df = df[df["option_type"] == option_type]
     else:
         raise ValueError("Please select one of the possible option types.")
     
-    closest_expiry = options_data.loc[0,"expiry"]
+    closest_expiry = df.loc[df.index[0], "expiry"]
+    df = df.loc[:, ["contractsymbol", "strike", "bid", "ask", "volume", "impliedvolatility"]]
+    df.columns = ["Contract symbol", "Strike price (K)", "Bid", "Ask", "Volume", "Implied volatility (IV)"]
+    df = df.set_index("Contract symbol")
 
-    #closest_strike_index = abs(options_data["strike"] - strike_price).argmin()
-    options_data = options_data.loc[:, 
-                                    ["contractsymbol", "strike", "bid", "ask", "volume", "impliedvolatility"]
-                                    ]
-    options_data.columns = ["Contract symbol", "Strike price (K)", "Bid", "Ask", "Volume", "Implied volatility (IV)"]
-    options_data = options_data.set_index("Contract symbol")
+    closest_expiry = datetime.strptime(closest_expiry, "%Y-%m-%d")
+    closest_expiry = datetime.strftime(closest_expiry, "%d.%m.%Y")
+    return df, closest_expiry
 
-    #closest_expiry = closest_expiry.strftime("%d.%m.%Y")
-    return options_data, closest_expiry
-
-# EXPIRATION DATE FIX
-
-# MAKE THE TABLE SMALLER?
-
-
+def data_older_than_yesterday(df):
+    data_input_date = df["snapshot_date"][0]
+    data_input_date = datetime.strptime(data_input_date, "%Y-%m-%d")
+    data_input_date_regionalized = datetime.strftime(data_input_date, "%d.%m.%Y")
     
+    if (datetime.now() - data_input_date).days > 0:
+        return data_input_date_regionalized
+    return None
+
+@st.cache_data
+def calculate_historical_volatility(selected_ticker, config):
+    df = yf.download(selected_ticker,
+                     interval=config.HV_INTERVAL,
+                     period=config.HV_PERIOD
+                     )
+    df = df.xs(selected_ticker, axis=1, level=1)
+    historical_volatility = np.log(df["Close"] / df["Close"].shift(1)).std() * np.sqrt(TRADING_YEAR_DAYS)
+
+    return historical_volatility
+
+@st.cache_data
+def get_risk_free_rate():
+    shy = yf.Ticker("SHY")
+    risk_free_rate = shy.info["dividendYield"] / 100
+    return risk_free_rate

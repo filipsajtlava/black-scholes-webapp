@@ -55,15 +55,15 @@ def plot_candlestick_asset(df, selected_interval, color_config):
         )  
         
     fig.update_layout(
-        margin=dict(t=0, b=0, l=0, r=0),
-        height=450,
+        margin=dict(t=30, b=0, l=0, r=0),
+        height=480,
         showlegend=False,
         xaxis=dict(
             tickformat="%Y-%m-%d\n%H:%M" if "m" in selected_interval else "%Y-%m-%d",
             tickangle=45,
-            #rangeslider=dict(visible=False),
         ),
-        uirevision="candlestick"
+        uirevision="candlestick",
+        title="Candlestick plot of historical asset prices"
     )
     return fig
 

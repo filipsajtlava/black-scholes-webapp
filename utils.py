@@ -2,7 +2,6 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 from config import StreamlitInputs, Colors
-#from inspect import signature
 
 def get_seed(seed_interval):
     rng = np.random.default_rng()
@@ -101,10 +100,3 @@ def highlight_chosen_row(df, target_index, option_type):
     styles = pd.DataFrame("", index=df.index, columns=df.columns)
     styles.loc[target_index, :] = f"background-color: {Colors.bubble_background_option_type(option_type=option_type)}"
     return styles
-
-
-# Not used in the current version
-#def filter_function_args(func, args_dict):
-#    sig = signature(func)
-#    return {key: value for key, value in args_dict.items() if key in sig.parameters}
-

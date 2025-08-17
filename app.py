@@ -2,14 +2,13 @@ import streamlit as st
 import pandas as pd
 from st_flexible_callout_elements import flexible_callout
 from supabase import create_client
-from black_scholes import black_scholes_price, compute_greeks
-from monte_carlo import simulate_gbm_paths, monte_carlo_estimate
-from stocks_options import get_stock_data, get_options_data, get_tickers
+from option_pricing import EuropeanOption
+from stocks_options import *
 from black_scholes_plotting import plot_payoffs, create_greek_graph
 from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from utils import *
-from config import AppSettings, Colors, Supabase, Greeks, VariableKey, StreamlitInputs, OptionType
 from candlestick_plotting import plot_candlestick_asset
+from utils import *
+from config import AppSettings, Colors, Supabase, Greeks, VariableKey, StreamlitInputs, OptionType, TRADING_YEAR_DAYS
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):
 
@@ -57,16 +56,21 @@ def render_output_price_bubble(option_type, modelled_price, config, color_config
                      padding=padding
                      )
 
-def create_greek_table(inputs):
-    greeks = pd.DataFrame(compute_greeks(inputs), index = [0])
+def create_greek_table(option_class):
+    greeks = pd.DataFrame(option_class.bs_greeks(), index = [0])
     greeks.index = ["Values"]
     st.table(greeks.transpose())
     return greeks
     
-def render_bs_greek_inputs(input_parameters, config):
+def render_bs_greek_inputs():
     selected_greek = st.selectbox("Select Greek to plot:", [g.value for g in Greeks])
-    greeks_x_options = [config.STREAMLIT_INPUT_CONFIGS[key].variable 
-                        for key in input_parameters.keys()]
+    greeks_x_options = [
+        VariableKey.S.value,
+        VariableKey.K.value,
+        VariableKey.T.value,
+        VariableKey.R.value,
+        VariableKey.SIGMA.value,
+    ]
     selected_variable = st.selectbox("Select the x-axis variable:", greeks_x_options)
 
     return selected_greek, selected_variable
@@ -81,8 +85,8 @@ def stage_bs_subtab(input_parameters, config, color_config):
     ) = uniform_columns([1.5, 0.5])
 
     with plot_column:
-
-        price_bs = black_scholes_price(input_parameters)
+        option_class = EuropeanOption(**input_parameters)
+        price_bs = option_class.bs_price()
         st.caption("Black-Scholes option price")
         render_output_price_bubble(option_type=input_parameters[VariableKey.OPTION_TYPE.value], 
                                    modelled_price=price_bs,
@@ -110,18 +114,18 @@ def stage_bs_subtab(input_parameters, config, color_config):
         main_bs_plot_container.plotly_chart(main_bs_plot, use_container_width=True)
 
     with greeks_column:
-
         upper_padding(10)
         mini_greeks_plot_container = st.empty()
         upper_padding(10)
         st.write("Greeks calculation")
 
-        create_greek_table(input_parameters)
-        selected_greek, selected_variable = render_bs_greek_inputs(input_parameters, config=config)
+        create_greek_table(option_class)
+        selected_greek, selected_variable = render_bs_greek_inputs()
 
-        mini_greeks_plot = create_greek_graph(selected_parameters=input_parameters,
-                                              x_var_config=config.STREAMLIT_INPUT_CONFIGS[selected_variable],
+        mini_greeks_plot = create_greek_graph(input_parameters=input_parameters,
+                                              selected_variable=selected_variable,
                                               greek_to_plot=selected_greek,
+                                              config=config,
                                               color_config=color_config
                                               )
         
@@ -130,15 +134,19 @@ def stage_bs_subtab(input_parameters, config, color_config):
 
 
 def cache_mc_results(input_parameters, config, color_config):
-    # Modelling
-    geom_brown_motion_mat = simulate_gbm_paths(selected_parameters=input_parameters)
-    modelled_price_mc, confidence_interval = monte_carlo_estimate(S_paths=geom_brown_motion_mat,
-                                                                  selected_parameters=input_parameters
-                                                                  )
-    gbm_plot, end_points_plot = plot_gbm_paths(S_paths=geom_brown_motion_mat,
+    input_parameters = input_parameters.copy()
+    mc_parameters_list = [VariableKey.PATHS.value, VariableKey.STEPS.value, "seed"]
+    mc_parameters = {k: input_parameters.pop(k) for k in mc_parameters_list}
+
+    mc_option = EuropeanOption(**input_parameters)
+    output_mc_dict = mc_option.mc_model(**mc_parameters)
+    modelled_price_mc = output_mc_dict["price"]
+    confidence_interval = output_mc_dict["confidence_interval"]
+
+    gbm_plot, end_points_plot = plot_gbm_paths(S_paths=mc_option.mc_generate_paths(**mc_parameters),
                                                T=input_parameters[VariableKey.T.value],
                                                r=input_parameters[VariableKey.R.value],
-                                               seed=input_parameters["seed"],
+                                               seed=mc_parameters["seed"],
                                                config=config,
                                                color_config=color_config
                                                )
@@ -322,12 +330,11 @@ def render_candlestick_plot(key_prefix, config, color_config, supabase_client):
         change_column,
         _
     ) = uniform_columns(non_empty_column_sizes=[2,1.5], empty_padding_size=0.5)
-    tickers = get_tickers(_supabase_client=supabase)
+    tickers = get_tickers(_supabase_client=supabase_client)
 
     with multiselect_column:
-        selected_ticker = st.multiselect("Select asset to plot:", tickers, max_selections=1)
-        if selected_ticker:
-            selected_ticker = selected_ticker[0]
+        selected_ticker = st.selectbox("Select an asset:", tickers)
+
     with change_column:
         upper_padding(22)
         change_bubble_container = st.empty()
@@ -354,9 +361,9 @@ def render_candlestick_plot(key_prefix, config, color_config, supabase_client):
         stock_data = get_stock_data(selected_ticker=selected_ticker, selected_interval=selected_interval, config=config)
 
         candlestick_plot = plot_candlestick_asset(df=stock_data,
-                                                    selected_interval=selected_interval,
-                                                    color_config=color_config
-                                                    )
+                                                  selected_interval=selected_interval,
+                                                  color_config=color_config
+                                                  )
         main_plot_container.plotly_chart(candlestick_plot)
         render_change_bubble(df=stock_data, container=change_bubble_container, color_config=color_config)
         st.caption(f"*Relative price change in the last {interval_to_text(selected_interval, config)}")
@@ -369,23 +376,64 @@ def render_option_selection_input(df):
     selected_option = st.selectbox("Select an option:", selection)
     return selected_option
 
-def render_price_bubble(df, index, option_type, config, color_config, font_size = 18, padding = 10):
-    upper_padding(5)
-    price = (df.loc[index, "Bid"] + df.loc[index, "Ask"]) / 2
-    flexible_callout(f"Price of the option: {price:.2f} {config.CURRENCY}",
-                     background_color=color_config.bubble_background_option_type(option_type),
-                     font_color=color_config.bubble_font_option_type(option_type),
-                     font_size=font_size,
-                     alignment="center",
-                     padding=padding
-                     )
+def render_price_bubble(price, option_type, config, color_config, font_size = 18, padding = 10, flexible_colors=True):
+    if flexible_colors:
+        flexible_callout(f"Price of the option: {price:.2f} {config.CURRENCY}",
+                        background_color=color_config.bubble_background_option_type(option_type),
+                        font_color=color_config.bubble_font_option_type(option_type),
+                        font_size=font_size,
+                        alignment="center",
+                        padding=padding
+                        )
+    else:
+        flexible_callout(f"Price of the option: {price:.2f} {config.CURRENCY}",
+                                background_color=color_config.DARK_GREY,
+                                font_color=color_config.WHITE,
+                                font_size=font_size,
+                                alignment="center",
+                                padding=padding
+                                )
 
-def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, color_config, supabase_client):
+def initialize_hv_option_class(options_data, selected_option, closest_expiry, option_type, config):
+    selected_strike_price = options_data.loc[selected_option, "Strike price (K)"]
+    hist_volatility = calculate_historical_volatility(selected_ticker=selected_ticker, config=config)
+    days_until_expiry = (datetime.strptime(closest_expiry, "%d.%m.%Y") - datetime.now()).days / TRADING_YEAR_DAYS
+    risk_free_rate = get_risk_free_rate()
+    hv_option = EuropeanOption(S=closing_price, 
+                            K=selected_strike_price,
+                            T=days_until_expiry,
+                            r=risk_free_rate,
+                            sigma=hist_volatility,
+                            option_type=option_type
+                            )
+    return hv_option
+
+def render_modelled_prices(option_class, option_type, config, color_config):   
+    st.write("Price calculated using Black-Scholes")
+    render_price_bubble(price=option_class.bs_price(),
+                        option_type=option_type,
+                        config=config,
+                        color_config=color_config,
+                        flexible_colors=False
+                        )
+    
+    upper_padding(10)
+    st.write("Price calculated using Monte Carlo")
+    render_price_bubble(price=option_class.mc_model(paths=10000.0,
+                                                 steps=100,
+                                                 seed=get_seed(seed_interval=config.SEED_INTERVAL),
+                                                 include_ci=False)["price"],
+                        option_type=option_type,
+                        config=config,
+                        color_config=color_config,
+                        flexible_colors=False
+                        )
+
+def stage_option_pricing(key_prefix, selected_ticker, config, color_config, supabase_client, closing_price):
     if selected_ticker:
         upper_padding(10)
         title_container = st.empty()
         table_container = st.empty()
-
         (
             _,
             option_type_selection_column,
@@ -396,29 +444,33 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
             _,
         ) = uniform_columns(non_empty_column_sizes=[0.7, 1.5, 1.5], empty_padding_size=0.25)
 
+        raw_options_data = get_data_from_supabase(supabase_client=supabase_client, selected_ticker=selected_ticker)
+        
+        if data_input_date := data_older_than_yesterday(df=raw_options_data):
+            old_data_text = f" (due to non-trading days, the data is from {data_input_date})"
+        else:
+            old_data_text = ""
+
         with option_type_selection_column:
             option_type = streamlit_input_ui(variable=VariableKey.OPTION_TYPE.value,
                                              config=config,
                                              key=key_prefix
                                              )
-
-        options_data, closest_expiry = get_options_data(selected_ticker=selected_ticker, 
-                                        option_type=option_type, 
-                                        strike_price=strike_price,
-                                        supabase_client=supabase_client
-                                        )
+        options_data, closest_expiry = get_specific_data(df=raw_options_data, option_type=option_type)
         
         with option_selection_column:
             selected_option = render_option_selection_input(df=options_data)
 
         with option_price_column:
-            render_price_bubble(df=options_data, 
-                                index=selected_option, 
+            upper_padding(5)
+            real_price = (options_data.loc[selected_option, "Bid"] + options_data.loc[selected_option, "Ask"]) / 2
+            render_price_bubble(price=real_price,
                                 option_type=option_type,
                                 config=config, 
-                                color_config=color_config)
+                                color_config=color_config
+                                )
             
-        title_container.write(f"Option market prices (with expiry at {closest_expiry})")
+        title_container.write(f"Option market prices for `{selected_ticker}` with expiry at {closest_expiry}" + old_data_text + ":")
         table_container.dataframe(options_data.style
                                   .apply(highlight_chosen_row, target_index=[selected_option], option_type=option_type, axis=None)
                                   .format({"Strike price (K)": "{:.2f}", 
@@ -426,17 +478,49 @@ def stage_option_pricing(key_prefix, selected_ticker, strike_price, config, colo
                                            "Ask": "{:.2f}", 
                                            "Volume": "{:.0f}", 
                                            "Implied volatility (IV)": "{:.4f}"}
-                                           )
+                                           ),
+                                  height=247
                                   )
+        
+        (
+            _,
+            bs_model,
+            _,
+            mc_model,
+            _,
+        ) = uniform_columns(non_empty_column_sizes=[1, 0.5], empty_padding_size=0.25)
+
+        hv_option = initialize_hv_option_class(options_data=options_data,
+                                               selected_option=selected_option,
+                                               closest_expiry=closest_expiry,
+                                               option_type=option_type,
+                                               config=config
+                                               )
+
+        with bs_model:
+            upper_padding(50)
+            render_modelled_prices(option_class=hv_option,
+                                   option_type=option_type,
+                                   config=config,
+                                   color_config=color_config
+                                   )
+            
+        with mc_model:
+            upper_padding(37)
+            st.write("Option greeks")
+            create_greek_table(option_class=hv_option)
+
+
+
+
+
+        
 
 if __name__ == "__main__":
     supabase = create_client(Supabase.SUPABASE_URL, Supabase.SUPABASE_READ_KEY)
 
     st.set_page_config(page_title="Option Pricing App", layout="wide")
-    tab_1, tab_2, tab_3 = st.tabs(["Math", "Option Pricing", "Option Pricing in Practice"])
-
-    with tab_1:
-        pass
+    tab_2, tab_3 = st.tabs(["Option Pricing", "Option Pricing in Practice"])
 
     with tab_2:
         (
@@ -454,6 +538,7 @@ if __name__ == "__main__":
                        VariableKey.SIGMA.value,
                        VariableKey.OPTION_TYPE.value
                        ]
+        
         with parameter_input_column:
             fixed_inputs = get_user_inputs(key_prefix="tab_2_1",
                                            config=AppSettings,
@@ -479,18 +564,19 @@ if __name__ == "__main__":
         ) = uniform_columns(non_empty_column_sizes=[2,3])
 
         with candlestick_plot_column:
-            selected_ticker, strike_price = render_candlestick_plot(key_prefix="tab_3_1", 
-                                                                    config=AppSettings, 
-                                                                    color_config=Colors,
-                                                                    supabase_client=supabase)
+            selected_ticker, closing_price = render_candlestick_plot(key_prefix="tab_3_1", 
+                                                                     config=AppSettings, 
+                                                                     color_config=Colors,
+                                                                     supabase_client=supabase
+                                                                     )
 
         with modelling_data_column:
             stage_option_pricing(key_prefix="tab_3_2", 
                                  config=AppSettings,
                                  color_config=Colors, 
                                  selected_ticker=selected_ticker,
-                                 strike_price=strike_price,
-                                 supabase_client=supabase
+                                 supabase_client=supabase,
+                                 closing_price=closing_price
                                  )
 
     remove_bottom_padding()
