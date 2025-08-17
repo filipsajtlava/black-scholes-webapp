@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from scipy.stats import gaussian_kde
-from utils_plotting import dashed_line
+from plotting.utils_plotting import dashed_line
 
 def kernel_density_vertical(fig, S_paths, T, randomized_selection, color_config):
     terminal_prices = S_paths[randomized_selection, -1]

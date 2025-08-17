@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 from st_flexible_callout_elements import flexible_callout
 from supabase import create_client
-from option_pricing import EuropeanOption
-from stocks_options import *
-from black_scholes_plotting import plot_payoffs, create_greek_graph
-from monte_carlo_plotting import plot_gbm_paths, plot_confidence_interval
-from candlestick_plotting import plot_candlestick_asset
-from utils import *
+from pricing.option_pricing import EuropeanOption
+from pricing.stocks_options import *
+from plotting.black_scholes import plot_payoffs, create_greek_graph
+from plotting.monte_carlo import plot_gbm_paths, plot_confidence_interval
+from plotting.candlestick import plot_candlestick_asset
+from src.utils import *
 from config import AppSettings, Colors, Supabase, Greeks, VariableKey, StreamlitInputs, OptionType, TRADING_YEAR_DAYS
 
 def get_user_inputs(key_prefix, config, selected_inputs = None):

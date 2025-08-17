@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 import numpy as np
-from option_pricing import EuropeanOption
-from utils_plotting import create_axes, dashed_line
+from pricing.option_pricing import EuropeanOption
+from plotting.utils_plotting import create_axes, dashed_line
 from config import OptionType, VariableKey
 
 def get_annotations(K, option_type, modelled_price, rel_x_pos, rel_y_pos):
