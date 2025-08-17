@@ -194,7 +194,7 @@ def refresh_mc_if_inputs_changed(input_parameters, fixed_seed_toggle, position_c
     st.session_state["last_inputs"] = input_parameters
 
 def render_ci_plot(modelled_price_mc, confidence_interval, option_type, container, color_config):
-    if modelled_price_mc > 0:
+    if round(modelled_price_mc, 1) > 0:
         CI_plot = plot_confidence_interval(modelled_price_mc, confidence_interval, option_type, color_config)
         container.plotly_chart(CI_plot, 
                                use_container_width=True,
