@@ -92,6 +92,14 @@ def plot_gbm_paths(S_paths, T, r, seed, config, color_config):
 
 def plot_confidence_interval(modelled_price, confidence_interval, option_type, color_config):
 
+    if modelled_price > 1:
+        round_decimal = 2
+    else:
+        round_decimal = 4
+
+    modelled_price = round(modelled_price, round_decimal)
+    confidence_interval = [round(val, round_decimal) for val in confidence_interval]
+
     fig = go.Figure()
 
     fig.add_trace(go.Scatter(
@@ -122,7 +130,7 @@ def plot_confidence_interval(modelled_price, confidence_interval, option_type, c
         visible=False
     )
 
-    x_axis_values = [confidence_interval[0], round(modelled_price, 2), confidence_interval[1]]
+    x_axis_values = [confidence_interval[0], modelled_price, confidence_interval[1]]
     buffer = (max(x_axis_values) - min(x_axis_values)) * 0.15
 
     fig.update_xaxes(tickmode="array",

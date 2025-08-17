@@ -91,7 +91,6 @@ class EuropeanOption:
             z_score = norm.ppf(1 - alpha / 2)
 
             confidence_interval = [price_estimate - std_error * z_score, price_estimate + std_error * z_score] 
-            confidence_interval = [round(val, 2) for val in confidence_interval]
             output["confidence_interval"] = confidence_interval
 
         return output
