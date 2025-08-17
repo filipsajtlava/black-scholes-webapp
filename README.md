@@ -2,6 +2,8 @@
 
 A web application for pricing financial options and visualizing option data, built with Python and Streamlit. The app provides both Black-Scholes and Monte Carlo simulation pricing models and integrates with Supabase for data storage and updates. Option data is fetched using yfinance and processed for analysis, visualization, and educational purposes.
 
+![Real options pricing interface](images/pricing.png)
+
 ## Link
 
 Project is easily accessible through streamlit webpage:
@@ -24,6 +26,8 @@ Project is easily accessible through streamlit webpage:
 - **User Interface:**  
   - Interactive controls for all model parameters via Streamlit sliders and inputs,
   - Tabs for different pricing approaches and practical option pricing.
+
+![Part of Monte Carlo simulation](images/mc.gif)
 
 ## Tech Stack
 
