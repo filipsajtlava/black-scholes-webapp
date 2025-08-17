@@ -6,8 +6,8 @@ A web application for pricing financial options and visualizing option data, bui
 
 ## Link
 
-Project is easily accessible through streamlit webpage:
-[Option Pricing WebApp](https://option-pricing-webapp-c8y6rhi4qgmxgkvannfxar.streamlit.app/)
+The project is easily accessible through the official streamlit deployment:
+- [Option Pricing WebApp](https://option-pricing-webapp-c8y6rhi4qgmxgkvannfxar.streamlit.app/)
 
 ## Features
 
